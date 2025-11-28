@@ -3,15 +3,11 @@ use crate::core::{
 };
 use std::process::Command;
 
-pub struct Pacman {
-    executor: CommandExecutor,
-}
+pub struct Pacman;
 
 impl Pacman {
     pub fn new() -> Self {
-        Self {
-            executor: CommandExecutor::default(),
-        }
+        Self
     }
 
     fn build_command(&self, options: &OperationOptions) -> Command {
@@ -155,7 +151,7 @@ impl PackageManager for Pacman {
                 let parts: Vec<&str> = repo_name.split('/').collect();
                 if parts.len() == 2 {
                     let name = parts[1].to_string();
-                    let version = rest.trim().split_whitespace().next().map(|s| s.to_string());
+                    let version = rest.split_whitespace().next().map(|s| s.to_string());
                     let installed = line.contains("[installed]");
 
                     let mut pkg = Package::new(name, "pacman".to_string())

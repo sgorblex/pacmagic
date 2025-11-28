@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::str::FromStr;
 
 /// Core package management operations
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -79,13 +80,21 @@ impl Operation {
     }
 
     /// Parse an operation from a string
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn try_from_str(s: &str) -> Option<Self> {
         for op in Self::all() {
             if op.default_aliases().contains(&s) {
                 return Some(*op);
             }
         }
         None
+    }
+}
+
+impl FromStr for Operation {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::try_from_str(s).ok_or_else(|| format!("Unknown operation: {}", s))
     }
 }
 

@@ -3,15 +3,11 @@ use crate::core::{
 };
 use std::process::Command;
 
-pub struct Brew {
-    executor: CommandExecutor,
-}
+pub struct Brew;
 
 impl Brew {
     pub fn new() -> Self {
-        Self {
-            executor: CommandExecutor::default(),
-        }
+        Self
     }
 
     fn build_command(&self, options: &OperationOptions) -> Command {

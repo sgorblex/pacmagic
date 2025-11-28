@@ -1,17 +1,11 @@
-use crate::core::{
-    CommandExecutor, Operation, OperationOptions, PacMagicError, Package, PackageManager, Result,
-};
+use crate::core::{CommandExecutor, Operation, OperationOptions, Package, PackageManager, Result};
 use std::process::Command;
 
-pub struct Apt {
-    executor: CommandExecutor,
-}
+pub struct Apt;
 
 impl Apt {
     pub fn new() -> Self {
-        Self {
-            executor: CommandExecutor::default(),
-        }
+        Self
     }
 
     fn build_command(&self, options: &OperationOptions) -> Command {

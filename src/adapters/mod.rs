@@ -50,7 +50,7 @@ impl AdapterRegistry {
         }
 
         // Sort by priority (highest first)
-        available.sort_by(|a, b| b.priority().cmp(&a.priority()));
+        available.sort_by_key(|pm| std::cmp::Reverse(pm.priority()));
 
         Ok(available[0].clone())
     }

@@ -172,7 +172,7 @@ impl Config {
     pub fn resolve_alias(&self, alias: &str) -> Option<Operation> {
         self.aliases
             .get(alias)
-            .and_then(|op| Operation::from_str(op))
+            .and_then(|op| Operation::try_from_str(op))
     }
 
     /// Get package manager configuration
