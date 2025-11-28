@@ -1,0 +1,58 @@
+# PacMagic Configuration File
+# This is an example configuration. Copy to ~/.config/pacmagic/config.toml and customize.
+
+[general]
+# Default package manager ("auto" for auto-detection)
+default_package_manager = "auto"
+
+# Confirm before installing packages
+confirm_before_install = true
+
+# Enable verbose output by default
+verbose = false
+
+# Use sudo by default
+use_sudo = true
+
+# Command aliases
+# Map short commands to operations
+[aliases]
+i = "install"
+rm = "remove"
+up = "update"
+upg = "upgrade"
+s = "search"
+ls = "list"
+info = "info"
+clean = "clean"
+
+# Package manager specific configuration
+[package_managers.apt]
+enabled = true
+use_sudo = true
+extra_flags = []
+
+[package_managers.pacman]
+enabled = true
+use_sudo = true
+# Use an AUR helper (paru, yay, or none)
+aur_helper = "paru"
+aur_enabled = true
+extra_flags = []
+
+[package_managers.brew]
+enabled = true
+use_sudo = false
+extra_flags = []
+
+[package_managers.dnf]
+enabled = true
+use_sudo = true
+extra_flags = []
+
+[package_managers.winget]
+enabled = true
+use_sudo = false
+extra_flags = []
+
+
