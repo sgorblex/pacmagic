@@ -6,37 +6,37 @@ use std::fmt;
 pub enum Operation {
     /// Install one or more packages
     Install,
-    
+
     /// Remove/uninstall one or more packages
     Remove,
-    
+
     /// Update package database/repositories
     Update,
-    
+
     /// Upgrade installed packages
     Upgrade,
-    
+
     /// Upgrade all packages (system-wide)
     UpgradeAll,
-    
+
     /// Search for packages
     Search,
-    
+
     /// List installed packages
     List,
-    
+
     /// Show information about a package
     Info,
-    
+
     /// Clean package cache
     Clean,
-    
+
     /// Show package files
     Files,
-    
+
     /// Check for broken dependencies
     Check,
-    
+
     /// Autoremove unused dependencies
     Autoremove,
 }
@@ -114,19 +114,19 @@ impl fmt::Display for Operation {
 pub struct OperationOptions {
     /// Skip confirmation prompts
     pub no_confirm: bool,
-    
+
     /// Use sudo/elevated privileges
     pub use_sudo: bool,
-    
+
     /// Verbose output
     pub verbose: bool,
-    
+
     /// Dry run (don't actually execute)
     pub dry_run: bool,
-    
+
     /// Additional flags to pass to the package manager
     pub extra_flags: Vec<String>,
-    
+
     /// Force operation even if risky
     pub force: bool,
 }
@@ -161,5 +161,3 @@ impl OperationOptions {
         self
     }
 }
-
-

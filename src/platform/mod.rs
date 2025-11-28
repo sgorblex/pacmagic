@@ -58,9 +58,7 @@ impl PlatformDetector {
         if fs::metadata("/etc/redhat-release").is_ok() {
             return LinuxDistribution::RedHat;
         }
-        if fs::metadata("/etc/SuSE-release").is_ok()
-            || fs::metadata("/etc/SUSE-brand").is_ok()
-        {
+        if fs::metadata("/etc/SuSE-release").is_ok() || fs::metadata("/etc/SUSE-brand").is_ok() {
             return LinuxDistribution::OpenSUSE;
         }
         if fs::metadata("/etc/alpine-release").is_ok() {
@@ -147,5 +145,3 @@ mod tests {
         assert!(pm.is_some());
     }
 }
-
-

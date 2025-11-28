@@ -1,6 +1,5 @@
 use crate::core::{
-    CommandExecutor, Operation, OperationOptions, Package, PackageManager, 
-    PacMagicError, Result,
+    CommandExecutor, Operation, OperationOptions, PacMagicError, Package, PackageManager, Result,
 };
 use std::process::Command;
 
@@ -86,7 +85,7 @@ impl PackageManager for Apt {
     fn install(&self, packages: &[&str], options: &OperationOptions) -> Result<()> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose);
         let mut cmd = self.build_command(options);
-        
+
         cmd.arg("install");
         cmd.args(packages);
         cmd.args(&options.extra_flags);
@@ -97,7 +96,7 @@ impl PackageManager for Apt {
     fn remove(&self, packages: &[&str], options: &OperationOptions) -> Result<()> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose);
         let mut cmd = self.build_command(options);
-        
+
         cmd.arg("remove");
         cmd.args(packages);
         cmd.args(&options.extra_flags);
@@ -108,7 +107,7 @@ impl PackageManager for Apt {
     fn update(&self, options: &OperationOptions) -> Result<()> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose);
         let mut cmd = self.build_command(options);
-        
+
         cmd.arg("update");
         cmd.args(&options.extra_flags);
 
@@ -118,7 +117,7 @@ impl PackageManager for Apt {
     fn upgrade(&self, packages: &[&str], options: &OperationOptions) -> Result<()> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose);
         let mut cmd = self.build_command(options);
-        
+
         cmd.arg("install");
         cmd.arg("--only-upgrade");
         cmd.args(packages);
@@ -130,7 +129,7 @@ impl PackageManager for Apt {
     fn upgrade_all(&self, options: &OperationOptions) -> Result<()> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose);
         let mut cmd = self.build_command(options);
-        
+
         cmd.arg("upgrade");
         cmd.args(&options.extra_flags);
 
@@ -140,12 +139,12 @@ impl PackageManager for Apt {
     fn search(&self, query: &str, options: &OperationOptions) -> Result<Vec<Package>> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose);
         let mut cmd = Command::new("apt");
-        
+
         cmd.arg("search");
         cmd.arg(query);
 
         let output = executor.execute_capture(cmd)?;
-        
+
         // Parse apt search output
         let packages: Vec<Package> = output
             .lines()
@@ -156,15 +155,15 @@ impl PackageManager for Apt {
                 if parts.is_empty() {
                     return None;
                 }
-                
+
                 let name = parts[0].split('/').next()?.to_string();
                 let version = parts.get(1).map(|s| s.to_string());
                 let installed = line.contains("[installed]");
-                
+
                 Some(
                     Package::new(name, "apt".to_string())
                         .with_version(version.unwrap_or_default())
-                        .with_installed(installed)
+                        .with_installed(installed),
                 )
             })
             .collect();
@@ -175,12 +174,12 @@ impl PackageManager for Apt {
     fn list_installed(&self, options: &OperationOptions) -> Result<Vec<Package>> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose);
         let mut cmd = Command::new("apt");
-        
+
         cmd.arg("list");
         cmd.arg("--installed");
 
         let output = executor.execute_capture(cmd)?;
-        
+
         let packages: Vec<Package> = output
             .lines()
             .skip(1) // Skip header line
@@ -190,14 +189,14 @@ impl PackageManager for Apt {
                 if parts.is_empty() {
                     return None;
                 }
-                
+
                 let name = parts[0].split('/').next()?.to_string();
                 let version = parts.get(1).map(|s| s.to_string());
-                
+
                 Some(
                     Package::new(name, "apt".to_string())
                         .with_version(version.unwrap_or_default())
-                        .with_installed(true)
+                        .with_installed(true),
                 )
             })
             .collect();
@@ -208,15 +207,15 @@ impl PackageManager for Apt {
     fn info(&self, package: &str, options: &OperationOptions) -> Result<Package> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose);
         let mut cmd = Command::new("apt");
-        
+
         cmd.arg("show");
         cmd.arg(package);
 
         let output = executor.execute_capture(cmd)?;
-        
+
         // Parse apt show output
         let mut pkg = Package::new(package.to_string(), "apt".to_string());
-        
+
         for line in output.lines() {
             if let Some(value) = line.strip_prefix("Version: ") {
                 pkg.version = Some(value.to_string());
@@ -231,7 +230,7 @@ impl PackageManager for Apt {
     fn clean(&self, options: &OperationOptions) -> Result<()> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose);
         let mut cmd = self.build_command(options);
-        
+
         cmd.arg("clean");
         cmd.args(&options.extra_flags);
 
@@ -241,19 +240,19 @@ impl PackageManager for Apt {
     fn files(&self, package: &str, options: &OperationOptions) -> Result<Vec<String>> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose);
         let mut cmd = Command::new("dpkg");
-        
+
         cmd.arg("-L");
         cmd.arg(package);
 
         let output = executor.execute_capture(cmd)?;
-        
+
         Ok(output.lines().map(|s| s.to_string()).collect())
     }
 
     fn check(&self, options: &OperationOptions) -> Result<()> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose);
         let mut cmd = self.build_command(options);
-        
+
         cmd.arg("check");
         cmd.args(&options.extra_flags);
 
@@ -263,7 +262,7 @@ impl PackageManager for Apt {
     fn autoremove(&self, options: &OperationOptions) -> Result<()> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose);
         let mut cmd = self.build_command(options);
-        
+
         cmd.arg("autoremove");
         cmd.args(&options.extra_flags);
 
@@ -289,5 +288,3 @@ mod tests {
         assert!(!apt.supports_operation(Operation::Files)); // dpkg, but through files()
     }
 }
-
-

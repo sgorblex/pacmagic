@@ -5,22 +5,22 @@ use serde::{Deserialize, Serialize};
 pub struct Package {
     /// Package name
     pub name: String,
-    
+
     /// Package version
     pub version: Option<String>,
-    
+
     /// Package description
     pub description: Option<String>,
-    
+
     /// Is the package installed?
     pub installed: bool,
-    
+
     /// Repository/source of the package
     pub repository: Option<String>,
-    
+
     /// Package manager that manages this package
     pub manager: String,
-    
+
     /// Additional metadata
     pub metadata: PackageMetadata,
 }
@@ -29,19 +29,19 @@ pub struct Package {
 pub struct PackageMetadata {
     /// Package size (in bytes)
     pub size: Option<u64>,
-    
+
     /// Package architecture
     pub architecture: Option<String>,
-    
+
     /// Package maintainer
     pub maintainer: Option<String>,
-    
+
     /// Package homepage
     pub homepage: Option<String>,
-    
+
     /// Package license
     pub license: Option<String>,
-    
+
     /// Dependencies
     pub dependencies: Vec<String>,
 }
@@ -118,5 +118,3 @@ impl OperationResult {
         self
     }
 }
-
-

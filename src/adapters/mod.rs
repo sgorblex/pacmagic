@@ -1,8 +1,8 @@
 pub mod apt;
-pub mod pacman;
 pub mod brew;
+pub mod pacman;
 
-use crate::core::{PackageManager, PacMagicError, Result};
+use crate::core::{PacMagicError, PackageManager, Result};
 use std::sync::Arc;
 
 /// Registry of all available package manager adapters
@@ -38,16 +38,13 @@ impl AdapterRegistry {
 
     /// Get a specific package manager by name
     pub fn get(&self, name: &str) -> Option<Arc<dyn PackageManager>> {
-        self.adapters
-            .iter()
-            .find(|pm| pm.name() == name)
-            .cloned()
+        self.adapters.iter().find(|pm| pm.name() == name).cloned()
     }
 
     /// Auto-detect the best package manager for the current system
     pub fn auto_detect(&self) -> Result<Arc<dyn PackageManager>> {
         let mut available = self.available();
-        
+
         if available.is_empty() {
             return Err(PacMagicError::NoPackageManagerFound);
         }
@@ -83,12 +80,10 @@ mod tests {
     #[test]
     fn test_get_adapter_by_name() {
         let registry = AdapterRegistry::new();
-        
+
         assert!(registry.get("apt").is_some());
         assert!(registry.get("pacman").is_some());
         assert!(registry.get("brew").is_some());
         assert!(registry.get("nonexistent").is_none());
     }
 }
-
-

@@ -3,11 +3,9 @@ pub mod config;
 pub mod core;
 pub mod platform;
 
-pub use config::Config;
-pub use core::{
-    Operation, OperationOptions, Package, PackageManager, PacMagicError, Result,
-};
 pub use adapters::AdapterRegistry;
+pub use config::Config;
+pub use core::{Operation, OperationOptions, PacMagicError, Package, PackageManager, Result};
 pub use platform::PlatformDetector;
 
 /// Main context for PacMagic operations
@@ -54,7 +52,10 @@ impl PacMagic {
     pub fn detect_package_manager(&self) -> Result<std::sync::Arc<dyn PackageManager>> {
         if self.config.general.default_package_manager != "auto" {
             // Try to use the configured package manager
-            if let Some(pm) = self.registry.get(&self.config.general.default_package_manager) {
+            if let Some(pm) = self
+                .registry
+                .get(&self.config.general.default_package_manager)
+            {
                 if pm.is_available() {
                     return Ok(pm);
                 }
@@ -97,11 +98,7 @@ impl PacMagic {
             Operation::List => {
                 let results = pm.list_installed(options)?;
                 for pkg in results {
-                    println!(
-                        "{} {}",
-                        pkg.name,
-                        pkg.version.as_deref().unwrap_or("")
-                    );
+                    println!("{} {}", pkg.name, pkg.version.as_deref().unwrap_or(""));
                 }
                 Ok(())
             }
@@ -157,5 +154,3 @@ mod tests {
         assert_eq!(pm.config().general.default_package_manager, "auto");
     }
 }
-
-

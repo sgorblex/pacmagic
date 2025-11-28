@@ -1,8 +1,8 @@
+use crate::core::{Operation, PacMagicError, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use crate::core::{Operation, PacMagicError, Result};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -16,15 +16,15 @@ pub struct GeneralConfig {
     /// Default package manager to use ("auto" for auto-detection)
     #[serde(default = "default_package_manager")]
     pub default_package_manager: String,
-    
+
     /// Confirm before installing packages
     #[serde(default = "default_true")]
     pub confirm_before_install: bool,
-    
+
     /// Enable verbose output by default
     #[serde(default)]
     pub verbose: bool,
-    
+
     /// Use sudo by default
     #[serde(default = "default_true")]
     pub use_sudo: bool,
@@ -35,14 +35,14 @@ pub struct PackageManagerConfig {
     /// Is this package manager enabled?
     #[serde(default = "default_true")]
     pub enabled: bool,
-    
+
     /// Use sudo for this package manager?
     pub use_sudo: Option<bool>,
-    
+
     /// Extra flags to always pass
     #[serde(default)]
     pub extra_flags: Vec<String>,
-    
+
     /// Additional configuration (package manager specific)
     #[serde(flatten)]
     pub extra: HashMap<String, toml::Value>,
@@ -81,7 +81,7 @@ impl Default for PackageManagerConfig {
 impl Default for Config {
     fn default() -> Self {
         let mut aliases = HashMap::new();
-        
+
         // Add default aliases for all operations
         for op in Operation::all() {
             for alias in op.default_aliases() {
@@ -101,7 +101,7 @@ impl Config {
     /// Load configuration from the default location
     pub fn load() -> Result<Self> {
         let config_path = Self::default_config_path()?;
-        
+
         if !config_path.exists() {
             // Return default config if file doesn't exist
             return Ok(Self::default());
@@ -131,12 +131,14 @@ impl Config {
     pub fn save_to(&self, path: &PathBuf) -> Result<()> {
         // Create parent directories if they don't exist
         if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| PacMagicError::ConfigError(format!("Failed to create config directory: {}", e)))?;
+            fs::create_dir_all(parent).map_err(|e| {
+                PacMagicError::ConfigError(format!("Failed to create config directory: {}", e))
+            })?;
         }
 
-        let contents = toml::to_string_pretty(self)
-            .map_err(|e| PacMagicError::ConfigError(format!("Failed to serialize config: {}", e)))?;
+        let contents = toml::to_string_pretty(self).map_err(|e| {
+            PacMagicError::ConfigError(format!("Failed to serialize config: {}", e))
+        })?;
 
         fs::write(path, contents)
             .map_err(|e| PacMagicError::ConfigError(format!("Failed to write config: {}", e)))?;
@@ -175,10 +177,7 @@ impl Config {
 
     /// Get package manager configuration
     pub fn get_package_manager_config(&self, name: &str) -> PackageManagerConfig {
-        self.package_managers
-            .get(name)
-            .cloned()
-            .unwrap_or_default()
+        self.package_managers.get(name).cloned().unwrap_or_default()
     }
 }
 
@@ -211,10 +210,8 @@ mod tests {
         let config = Config::default();
         let toml = toml::to_string(&config).unwrap();
         assert!(!toml.is_empty());
-        
+
         let parsed: Config = toml::from_str(&toml).unwrap();
         assert_eq!(parsed.general.default_package_manager, "auto");
     }
 }
-
-

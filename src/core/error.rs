@@ -12,10 +12,7 @@ pub enum PacMagicError {
     PackageManagerNotAvailable(String),
 
     #[error("Package manager '{pm}' does not support operation '{op}'")]
-    OperationNotSupported {
-        pm: String,
-        op: String,
-    },
+    OperationNotSupported { pm: String, op: String },
 
     #[error("Command execution failed: {0}")]
     ExecutionError(String),
@@ -47,8 +44,7 @@ impl PacMagicError {
     pub fn is_recoverable(&self) -> bool {
         matches!(
             self,
-            PacMagicError::PackageNotFound(_)
-                | PacMagicError::OperationNotSupported { .. }
+            PacMagicError::PackageNotFound(_) | PacMagicError::OperationNotSupported { .. }
         )
     }
 
@@ -65,5 +61,3 @@ impl PacMagicError {
         }
     }
 }
-
-

@@ -89,5 +89,3 @@ pub trait PackageManagerExt: PackageManager {
 
 // Blanket implementation
 impl<T: PackageManager> PackageManagerExt for T {}
-
-

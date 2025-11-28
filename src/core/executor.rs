@@ -1,6 +1,6 @@
-use std::process::{Command, Output, Stdio};
 use crate::core::error::{PacMagicError, Result};
 use log::{debug, info};
+use std::process::{Command, Output, Stdio};
 
 /// Handles command execution with consistent error handling
 pub struct CommandExecutor {
@@ -30,15 +30,14 @@ impl CommandExecutor {
 
         debug!("Running command: {:?}", command);
 
-        let output = command
-            .stdin(Stdio::null())
-            .output()
-            .map_err(|e| PacMagicError::ExecutionError(format!("Failed to execute command: {}", e)))?;
+        let output = command.stdin(Stdio::null()).output().map_err(|e| {
+            PacMagicError::ExecutionError(format!("Failed to execute command: {}", e))
+        })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             let stdout = String::from_utf8_lossy(&output.stdout);
-            
+
             return Err(PacMagicError::ExecutionError(format!(
                 "Command failed with exit code {:?}\nStdout: {}\nStderr: {}",
                 output.status.code(),
@@ -66,8 +65,9 @@ impl CommandExecutor {
     /// Execute a command and return stdout as a string
     pub fn execute_capture(&self, command: Command) -> Result<String> {
         let output = self.execute(command)?;
-        let stdout = String::from_utf8(output.stdout)
-            .map_err(|e| PacMagicError::ExecutionError(format!("Invalid UTF-8 in output: {}", e)))?;
+        let stdout = String::from_utf8(output.stdout).map_err(|e| {
+            PacMagicError::ExecutionError(format!("Invalid UTF-8 in output: {}", e))
+        })?;
         Ok(stdout)
     }
 
@@ -89,7 +89,9 @@ impl CommandExecutor {
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .status()
-            .map_err(|e| PacMagicError::ExecutionError(format!("Failed to execute command: {}", e)))?;
+            .map_err(|e| {
+                PacMagicError::ExecutionError(format!("Failed to execute command: {}", e))
+            })?;
 
         if !status.success() {
             return Err(PacMagicError::ExecutionError(format!(
@@ -107,5 +109,3 @@ impl Default for CommandExecutor {
         Self::new(false, false)
     }
 }
-
-

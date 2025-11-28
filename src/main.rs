@@ -191,7 +191,7 @@ fn run(cli: Cli) -> pacmagic::Result<()> {
 
         Commands::InitConfig { force } => {
             let config_path = Config::default_config_path()?;
-            
+
             if config_path.exists() && !force {
                 eprintln!("Config file already exists at: {}", config_path.display());
                 eprintln!("Use --force to overwrite");
@@ -207,5 +207,3 @@ fn run(cli: Cli) -> pacmagic::Result<()> {
 
     Ok(())
 }
-
-

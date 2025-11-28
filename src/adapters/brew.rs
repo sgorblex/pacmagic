@@ -1,6 +1,5 @@
 use crate::core::{
-    CommandExecutor, Operation, OperationOptions, Package, PackageManager,
-    PacMagicError, Result,
+    CommandExecutor, Operation, OperationOptions, PacMagicError, Package, PackageManager, Result,
 };
 use std::process::Command;
 
@@ -78,7 +77,7 @@ impl PackageManager for Brew {
     fn install(&self, packages: &[&str], options: &OperationOptions) -> Result<()> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose);
         let mut cmd = self.build_command(options);
-        
+
         cmd.arg("install");
         cmd.args(packages);
         cmd.args(&options.extra_flags);
@@ -89,7 +88,7 @@ impl PackageManager for Brew {
     fn remove(&self, packages: &[&str], options: &OperationOptions) -> Result<()> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose);
         let mut cmd = self.build_command(options);
-        
+
         cmd.arg("uninstall");
         cmd.args(packages);
         cmd.args(&options.extra_flags);
@@ -100,7 +99,7 @@ impl PackageManager for Brew {
     fn update(&self, options: &OperationOptions) -> Result<()> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose);
         let mut cmd = self.build_command(options);
-        
+
         cmd.arg("update");
         cmd.args(&options.extra_flags);
 
@@ -110,7 +109,7 @@ impl PackageManager for Brew {
     fn upgrade(&self, packages: &[&str], options: &OperationOptions) -> Result<()> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose);
         let mut cmd = self.build_command(options);
-        
+
         cmd.arg("upgrade");
         cmd.args(packages);
         cmd.args(&options.extra_flags);
@@ -121,7 +120,7 @@ impl PackageManager for Brew {
     fn upgrade_all(&self, options: &OperationOptions) -> Result<()> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose);
         let mut cmd = self.build_command(options);
-        
+
         cmd.arg("upgrade");
         cmd.args(&options.extra_flags);
 
@@ -131,12 +130,12 @@ impl PackageManager for Brew {
     fn search(&self, query: &str, options: &OperationOptions) -> Result<Vec<Package>> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose);
         let mut cmd = Command::new("brew");
-        
+
         cmd.arg("search");
         cmd.arg(query);
 
         let output = executor.execute_capture(cmd)?;
-        
+
         // Parse brew search output
         let packages: Vec<Package> = output
             .lines()
@@ -153,12 +152,12 @@ impl PackageManager for Brew {
     fn list_installed(&self, options: &OperationOptions) -> Result<Vec<Package>> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose);
         let mut cmd = Command::new("brew");
-        
+
         cmd.arg("list");
         cmd.arg("--versions");
 
         let output = executor.execute_capture(cmd)?;
-        
+
         let packages: Vec<Package> = output
             .lines()
             .filter(|line| !line.is_empty())
@@ -167,17 +166,16 @@ impl PackageManager for Brew {
                 if parts.is_empty() {
                     return None;
                 }
-                
+
                 let name = parts[0].to_string();
                 let version = parts.get(1).map(|s| s.to_string());
-                
-                let mut pkg = Package::new(name, "brew".to_string())
-                    .with_installed(true);
-                
+
+                let mut pkg = Package::new(name, "brew".to_string()).with_installed(true);
+
                 if let Some(v) = version {
                     pkg = pkg.with_version(v);
                 }
-                
+
                 Some(pkg)
             })
             .collect();
@@ -188,19 +186,19 @@ impl PackageManager for Brew {
     fn info(&self, package: &str, options: &OperationOptions) -> Result<Package> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose);
         let mut cmd = Command::new("brew");
-        
+
         cmd.arg("info");
         cmd.arg("--json=v2");
         cmd.arg(package);
 
         let output = executor.execute_capture(cmd)?;
-        
+
         // Parse JSON output
         let json: serde_json::Value = serde_json::from_str(&output)
             .map_err(|e| PacMagicError::ExecutionError(format!("Failed to parse JSON: {}", e)))?;
-        
+
         let mut pkg = Package::new(package.to_string(), "brew".to_string());
-        
+
         if let Some(formulae) = json["formulae"].as_array() {
             if let Some(formula) = formulae.first() {
                 if let Some(version) = formula["versions"]["stable"].as_str() {
@@ -221,7 +219,7 @@ impl PackageManager for Brew {
     fn clean(&self, options: &OperationOptions) -> Result<()> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose);
         let mut cmd = self.build_command(options);
-        
+
         cmd.arg("cleanup");
         cmd.args(&options.extra_flags);
 
@@ -231,19 +229,19 @@ impl PackageManager for Brew {
     fn files(&self, package: &str, options: &OperationOptions) -> Result<Vec<String>> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose);
         let mut cmd = Command::new("brew");
-        
+
         cmd.arg("list");
         cmd.arg(package);
 
         let output = executor.execute_capture(cmd)?;
-        
+
         Ok(output.lines().map(|s| s.to_string()).collect())
     }
 
     fn check(&self, options: &OperationOptions) -> Result<()> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose);
         let mut cmd = Command::new("brew");
-        
+
         cmd.arg("doctor");
         cmd.args(&options.extra_flags);
 
@@ -277,5 +275,3 @@ mod tests {
         assert!(!brew.supports_operation(Operation::Autoremove));
     }
 }
-
-
