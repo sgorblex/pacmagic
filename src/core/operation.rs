@@ -119,7 +119,7 @@ impl fmt::Display for Operation {
 }
 
 /// Options that modify operation behavior
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct OperationOptions {
     /// Skip confirmation prompts
     pub no_confirm: bool,
@@ -133,11 +133,28 @@ pub struct OperationOptions {
     /// Dry run (don't actually execute)
     pub dry_run: bool,
 
+    /// Print the command before executing (default: true)
+    pub show_commands: bool,
+
     /// Additional flags to pass to the package manager
     pub extra_flags: Vec<String>,
 
     /// Force operation even if risky
     pub force: bool,
+}
+
+impl Default for OperationOptions {
+    fn default() -> Self {
+        Self {
+            no_confirm: false,
+            use_sudo: true,
+            verbose: false,
+            dry_run: false,
+            show_commands: true, // Print commands by default
+            extra_flags: Vec::new(),
+            force: false,
+        }
+    }
 }
 
 impl OperationOptions {
@@ -167,6 +184,11 @@ impl OperationOptions {
 
     pub fn with_force(mut self, value: bool) -> Self {
         self.force = value;
+        self
+    }
+
+    pub fn with_show_commands(mut self, value: bool) -> Self {
+        self.show_commands = value;
         self
     }
 }

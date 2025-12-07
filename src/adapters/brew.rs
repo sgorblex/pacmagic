@@ -71,7 +71,8 @@ impl PackageManager for Brew {
     }
 
     fn install(&self, packages: &[&str], options: &OperationOptions) -> Result<()> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
         cmd.arg("install");
@@ -82,7 +83,8 @@ impl PackageManager for Brew {
     }
 
     fn remove(&self, packages: &[&str], options: &OperationOptions) -> Result<()> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
         cmd.arg("uninstall");
@@ -93,7 +95,8 @@ impl PackageManager for Brew {
     }
 
     fn update(&self, options: &OperationOptions) -> Result<()> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
         cmd.arg("update");
@@ -103,7 +106,8 @@ impl PackageManager for Brew {
     }
 
     fn upgrade(&self, packages: &[&str], options: &OperationOptions) -> Result<()> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
         cmd.arg("upgrade");
@@ -114,7 +118,8 @@ impl PackageManager for Brew {
     }
 
     fn upgrade_all(&self, options: &OperationOptions) -> Result<()> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
         cmd.arg("upgrade");
@@ -124,7 +129,8 @@ impl PackageManager for Brew {
     }
 
     fn search(&self, query: &str, options: &OperationOptions) -> Result<Vec<Package>> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = Command::new("brew");
 
         cmd.arg("search");
@@ -146,7 +152,8 @@ impl PackageManager for Brew {
     }
 
     fn list_installed(&self, options: &OperationOptions) -> Result<Vec<Package>> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = Command::new("brew");
 
         cmd.arg("list");
@@ -180,7 +187,8 @@ impl PackageManager for Brew {
     }
 
     fn info(&self, package: &str, options: &OperationOptions) -> Result<Package> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = Command::new("brew");
 
         cmd.arg("info");
@@ -213,7 +221,8 @@ impl PackageManager for Brew {
     }
 
     fn clean(&self, options: &OperationOptions) -> Result<()> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
         cmd.arg("cleanup");
@@ -223,7 +232,8 @@ impl PackageManager for Brew {
     }
 
     fn files(&self, package: &str, options: &OperationOptions) -> Result<Vec<String>> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = Command::new("brew");
 
         cmd.arg("list");
@@ -235,7 +245,8 @@ impl PackageManager for Brew {
     }
 
     fn check(&self, options: &OperationOptions) -> Result<()> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = Command::new("brew");
 
         cmd.arg("doctor");

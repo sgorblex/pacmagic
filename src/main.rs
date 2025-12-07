@@ -24,6 +24,10 @@ struct Cli {
     /// Skip confirmation prompts
     #[arg(short = 'y', long, global = true)]
     yes: bool,
+
+    /// Hide the command being executed (commands are shown by default)
+    #[arg(short = 'q', long = "quiet", global = true)]
+    quiet: bool,
 }
 
 #[derive(Subcommand)]
@@ -122,7 +126,8 @@ fn run(cli: Cli) -> pacmagic::Result<()> {
     let options = OperationOptions::new()
         .with_verbose(cli.verbose)
         .with_dry_run(cli.dry_run)
-        .with_no_confirm(cli.yes);
+        .with_no_confirm(cli.yes)
+        .with_show_commands(!cli.quiet); // Show commands unless --quiet is used
 
     match cli.command {
         Commands::Install { packages } => {

@@ -79,7 +79,8 @@ impl PackageManager for Pacman {
     }
 
     fn install(&self, packages: &[&str], options: &OperationOptions) -> Result<()> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
         cmd.arg("-S"); // Sync (install)
@@ -90,7 +91,8 @@ impl PackageManager for Pacman {
     }
 
     fn remove(&self, packages: &[&str], options: &OperationOptions) -> Result<()> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
         cmd.arg("-R"); // Remove
@@ -101,7 +103,8 @@ impl PackageManager for Pacman {
     }
 
     fn update(&self, options: &OperationOptions) -> Result<()> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
         cmd.arg("-Sy"); // Sync database
@@ -116,7 +119,8 @@ impl PackageManager for Pacman {
     }
 
     fn upgrade_all(&self, options: &OperationOptions) -> Result<()> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
         cmd.arg("-Syu"); // Sync + refresh + upgrade
@@ -126,7 +130,8 @@ impl PackageManager for Pacman {
     }
 
     fn search(&self, query: &str, options: &OperationOptions) -> Result<Vec<Package>> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = Command::new("pacman");
 
         cmd.arg("-Ss"); // Search sync database
@@ -181,7 +186,8 @@ impl PackageManager for Pacman {
     }
 
     fn list_installed(&self, options: &OperationOptions) -> Result<Vec<Package>> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = Command::new("pacman");
 
         cmd.arg("-Q"); // Query local database
@@ -209,7 +215,8 @@ impl PackageManager for Pacman {
     }
 
     fn info(&self, package: &str, options: &OperationOptions) -> Result<Package> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = Command::new("pacman");
 
         cmd.arg("-Si"); // Show info from sync database
@@ -233,7 +240,8 @@ impl PackageManager for Pacman {
     }
 
     fn clean(&self, options: &OperationOptions) -> Result<()> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
         cmd.arg("-Sc"); // Clean cache
@@ -243,7 +251,8 @@ impl PackageManager for Pacman {
     }
 
     fn files(&self, package: &str, options: &OperationOptions) -> Result<Vec<String>> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = Command::new("pacman");
 
         cmd.arg("-Ql"); // Query files
@@ -261,7 +270,8 @@ impl PackageManager for Pacman {
     }
 
     fn check(&self, options: &OperationOptions) -> Result<()> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = Command::new("pacman");
 
         cmd.arg("-Dk"); // Check database

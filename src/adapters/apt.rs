@@ -77,7 +77,8 @@ impl PackageManager for Apt {
     }
 
     fn install(&self, packages: &[&str], options: &OperationOptions) -> Result<()> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
         cmd.arg("install");
@@ -88,7 +89,8 @@ impl PackageManager for Apt {
     }
 
     fn remove(&self, packages: &[&str], options: &OperationOptions) -> Result<()> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
         cmd.arg("remove");
@@ -99,7 +101,8 @@ impl PackageManager for Apt {
     }
 
     fn update(&self, options: &OperationOptions) -> Result<()> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
         cmd.arg("update");
@@ -109,7 +112,8 @@ impl PackageManager for Apt {
     }
 
     fn upgrade(&self, packages: &[&str], options: &OperationOptions) -> Result<()> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
         cmd.arg("install");
@@ -121,7 +125,8 @@ impl PackageManager for Apt {
     }
 
     fn upgrade_all(&self, options: &OperationOptions) -> Result<()> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
         cmd.arg("upgrade");
@@ -131,7 +136,8 @@ impl PackageManager for Apt {
     }
 
     fn search(&self, query: &str, options: &OperationOptions) -> Result<Vec<Package>> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = Command::new("apt");
 
         cmd.arg("search");
@@ -166,7 +172,8 @@ impl PackageManager for Apt {
     }
 
     fn list_installed(&self, options: &OperationOptions) -> Result<Vec<Package>> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = Command::new("apt");
 
         cmd.arg("list");
@@ -199,7 +206,8 @@ impl PackageManager for Apt {
     }
 
     fn info(&self, package: &str, options: &OperationOptions) -> Result<Package> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = Command::new("apt");
 
         cmd.arg("show");
@@ -222,7 +230,8 @@ impl PackageManager for Apt {
     }
 
     fn clean(&self, options: &OperationOptions) -> Result<()> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
         cmd.arg("clean");
@@ -232,7 +241,8 @@ impl PackageManager for Apt {
     }
 
     fn files(&self, package: &str, options: &OperationOptions) -> Result<Vec<String>> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = Command::new("dpkg");
 
         cmd.arg("-L");
@@ -244,7 +254,8 @@ impl PackageManager for Apt {
     }
 
     fn check(&self, options: &OperationOptions) -> Result<()> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
         cmd.arg("check");
@@ -254,7 +265,8 @@ impl PackageManager for Apt {
     }
 
     fn autoremove(&self, options: &OperationOptions) -> Result<()> {
-        let executor = CommandExecutor::new(options.dry_run, options.verbose);
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
         cmd.arg("autoremove");
