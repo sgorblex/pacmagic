@@ -82,7 +82,6 @@ impl Default for Config {
     fn default() -> Self {
         let mut aliases = HashMap::new();
 
-        // Add default aliases for all operations
         for op in Operation::all() {
             for alias in op.default_aliases() {
                 aliases.insert(alias.to_string(), op.to_string());
@@ -103,7 +102,6 @@ impl Config {
         let config_path = Self::default_config_path()?;
 
         if !config_path.exists() {
-            // Return default config if file doesn't exist
             return Ok(Self::default());
         }
 
@@ -129,7 +127,6 @@ impl Config {
 
     /// Save configuration to a specific path
     pub fn save_to(&self, path: &PathBuf) -> Result<()> {
-        // Create parent directories if they don't exist
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).map_err(|e| {
                 PacMagicError::ConfigError(format!("Failed to create config directory: {}", e))
@@ -180,9 +177,6 @@ impl Config {
         self.package_managers.get(name).cloned().unwrap_or_default()
     }
 }
-
-// Note: Using `dirs` crate for cross-platform home directory detection
-// We need to add it to Cargo.toml
 
 #[cfg(test)]
 mod tests {

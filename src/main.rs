@@ -117,17 +117,15 @@ fn main() {
 fn run(cli: Cli) -> pacmagic::Result<()> {
     let mut pm = PacMagic::new()?;
 
-    // Override config with CLI flags
     if let Some(pm_name) = &cli.package_manager {
         pm.config_mut().general.default_package_manager = pm_name.clone();
     }
 
-    // Build operation options
     let options = OperationOptions::new()
         .with_verbose(cli.verbose)
         .with_dry_run(cli.dry_run)
         .with_no_confirm(cli.yes)
-        .with_show_commands(!cli.quiet); // Show commands unless --quiet is used
+        .with_show_commands(!cli.quiet);
 
     match cli.command {
         Commands::Install { packages } => {

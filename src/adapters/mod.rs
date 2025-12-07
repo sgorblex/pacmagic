@@ -49,7 +49,6 @@ impl AdapterRegistry {
             return Err(PacMagicError::NoPackageManagerFound);
         }
 
-        // Sort by priority (highest first)
         available.sort_by_key(|pm| std::cmp::Reverse(pm.priority()));
 
         Ok(available[0].clone())

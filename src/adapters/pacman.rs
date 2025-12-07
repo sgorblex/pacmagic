@@ -51,7 +51,6 @@ impl PackageManager for Pacman {
     }
 
     fn priority(&self) -> u8 {
-        // High priority on Arch Linux
         #[cfg(target_os = "linux")]
         {
             if std::path::Path::new("/etc/arch-release").exists() {
@@ -83,7 +82,7 @@ impl PackageManager for Pacman {
             .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
-        cmd.arg("-S"); // Sync (install)
+        cmd.arg("-S");
         cmd.args(packages);
         cmd.args(&options.extra_flags);
 
@@ -95,7 +94,7 @@ impl PackageManager for Pacman {
             .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
-        cmd.arg("-R"); // Remove
+        cmd.arg("-R");
         cmd.args(packages);
         cmd.args(&options.extra_flags);
 
@@ -107,7 +106,7 @@ impl PackageManager for Pacman {
             .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
-        cmd.arg("-Sy"); // Sync database
+        cmd.arg("-Sy");
         cmd.args(&options.extra_flags);
 
         executor.execute_interactive(cmd)
@@ -123,7 +122,7 @@ impl PackageManager for Pacman {
             .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
-        cmd.arg("-Syu"); // Sync + refresh + upgrade
+        cmd.arg("-Syu");
         cmd.args(&options.extra_flags);
 
         executor.execute_interactive(cmd)
@@ -134,12 +133,11 @@ impl PackageManager for Pacman {
             .with_show_commands(options.show_commands);
         let mut cmd = Command::new("pacman");
 
-        cmd.arg("-Ss"); // Search sync database
+        cmd.arg("-Ss");
         cmd.arg(query);
 
         let output = executor.execute_capture(cmd)?;
 
-        // Parse pacman search output
         let mut packages = Vec::new();
         let lines: Vec<&str> = output.lines().collect();
 
@@ -151,7 +149,6 @@ impl PackageManager for Pacman {
                 continue;
             }
 
-            // First line: repo/name version [installed]
             if let Some((repo_name, rest)) = line.split_once(' ') {
                 let parts: Vec<&str> = repo_name.split('/').collect();
                 if parts.len() == 2 {
@@ -167,7 +164,6 @@ impl PackageManager for Pacman {
                         pkg = pkg.with_version(v);
                     }
 
-                    // Second line: description
                     if i + 1 < lines.len() {
                         let desc_line = lines[i + 1].trim();
                         if !desc_line.is_empty() && !desc_line.starts_with("    ") {
@@ -190,7 +186,7 @@ impl PackageManager for Pacman {
             .with_show_commands(options.show_commands);
         let mut cmd = Command::new("pacman");
 
-        cmd.arg("-Q"); // Query local database
+        cmd.arg("-Q");
 
         let output = executor.execute_capture(cmd)?;
 
@@ -219,7 +215,7 @@ impl PackageManager for Pacman {
             .with_show_commands(options.show_commands);
         let mut cmd = Command::new("pacman");
 
-        cmd.arg("-Si"); // Show info from sync database
+        cmd.arg("-Si");
         cmd.arg(package);
 
         let output = executor.execute_capture(cmd)?;
@@ -244,7 +240,7 @@ impl PackageManager for Pacman {
             .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
-        cmd.arg("-Sc"); // Clean cache
+        cmd.arg("-Sc");
         cmd.args(&options.extra_flags);
 
         executor.execute_interactive(cmd)
@@ -255,17 +251,14 @@ impl PackageManager for Pacman {
             .with_show_commands(options.show_commands);
         let mut cmd = Command::new("pacman");
 
-        cmd.arg("-Ql"); // Query files
+        cmd.arg("-Ql");
         cmd.arg(package);
 
         let output = executor.execute_capture(cmd)?;
 
         Ok(output
             .lines()
-            .filter_map(|line| {
-                // Format: "package /path/to/file"
-                line.split_once(' ').map(|(_, path)| path.to_string())
-            })
+            .filter_map(|line| line.split_once(' ').map(|(_, path)| path.to_string()))
             .collect())
     }
 
@@ -274,7 +267,7 @@ impl PackageManager for Pacman {
             .with_show_commands(options.show_commands);
         let mut cmd = Command::new("pacman");
 
-        cmd.arg("-Dk"); // Check database
+        cmd.arg("-Dk");
         cmd.args(&options.extra_flags);
 
         executor.execute_checked(cmd)

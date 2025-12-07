@@ -41,14 +41,13 @@ impl PackageManager for Brew {
     }
 
     fn priority(&self) -> u8 {
-        // High priority on macOS
         #[cfg(target_os = "macos")]
         {
             return 90;
         }
         #[cfg(target_os = "linux")]
         {
-            return 30; // Lower priority on Linux (Linuxbrew)
+            return 30;
         }
         #[allow(unreachable_code)]
         50
@@ -138,7 +137,6 @@ impl PackageManager for Brew {
 
         let output = executor.execute_capture(cmd)?;
 
-        // Parse brew search output
         let packages: Vec<Package> = output
             .lines()
             .filter(|line| !line.is_empty() && !line.starts_with("==>"))
@@ -197,7 +195,6 @@ impl PackageManager for Brew {
 
         let output = executor.execute_capture(cmd)?;
 
-        // Parse JSON output
         let json: serde_json::Value = serde_json::from_str(&output)
             .map_err(|e| PacMagicError::ExecutionError(format!("Failed to parse JSON: {}", e)))?;
 

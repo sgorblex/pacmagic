@@ -150,7 +150,7 @@ impl Default for OperationOptions {
             use_sudo: true,
             verbose: false,
             dry_run: false,
-            show_commands: true, // Print commands by default
+            show_commands: true,
             extra_flags: Vec::new(),
             force: false,
         }

@@ -51,7 +51,6 @@ impl PacMagic {
     /// Auto-detect the best package manager for the current system
     pub fn detect_package_manager(&self) -> Result<std::sync::Arc<dyn PackageManager>> {
         if self.config.general.default_package_manager != "auto" {
-            // Try to use the configured package manager
             if let Some(pm) = self
                 .registry
                 .get(&self.config.general.default_package_manager)
@@ -62,7 +61,6 @@ impl PacMagic {
             }
         }
 
-        // Fall back to auto-detection
         self.registry.auto_detect()
     }
 

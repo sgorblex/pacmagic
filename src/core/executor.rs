@@ -23,22 +23,15 @@ impl CommandExecutor {
         self
     }
 
-    /// Format a command for display
-    /// Note: Command's Debug format is: "program" "arg1" "arg2" ...
-    /// We need to extract and unquote each part
     fn format_command(&self, command: &Command) -> String {
         let debug_str = format!("{:?}", command);
-
-        // The Debug format is simply: "program" "arg1" "arg2" ...
-        // We need to extract all quoted strings and join them with spaces
         let mut parts = Vec::new();
         let mut chars = debug_str.chars().peekable();
 
         while let Some(ch) = chars.next() {
             if ch == '"' {
-                // Found start of quoted string, collect until closing quote
                 let mut part = String::new();
-                while let Some(next_ch) = chars.next() {
+                for next_ch in chars.by_ref() {
                     if next_ch == '"' {
                         break;
                     }
@@ -51,19 +44,15 @@ impl CommandExecutor {
         }
 
         if parts.is_empty() {
-            // Fallback to original if no quotes found
             debug_str
         } else {
-            // Join all parts with spaces
             parts.join(" ")
         }
     }
 
-    /// Print command if show_commands is enabled with pretty formatting
     fn print_command(&self, command: &Command, prefix: &str) {
         if self.show_commands {
             let cmd_str = self.format_command(command);
-            // Use pretty formatting with emojis for better visibility
             if self.dry_run {
                 eprintln!("🔍 {}: {}", prefix, cmd_str);
             } else {

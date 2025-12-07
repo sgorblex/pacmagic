@@ -49,7 +49,6 @@ impl PackageManager for Apt {
     }
 
     fn priority(&self) -> u8 {
-        // High priority on Debian/Ubuntu systems
         #[cfg(target_os = "linux")]
         {
             if std::path::Path::new("/etc/debian_version").exists() {
@@ -145,12 +144,10 @@ impl PackageManager for Apt {
 
         let output = executor.execute_capture(cmd)?;
 
-        // Parse apt search output
         let packages: Vec<Package> = output
             .lines()
             .filter(|line| !line.is_empty() && !line.starts_with("Sorting"))
             .filter_map(|line| {
-                // apt search format: "package/suite version arch [installed]"
                 let parts: Vec<&str> = line.split_whitespace().collect();
                 if parts.is_empty() {
                     return None;
@@ -183,7 +180,7 @@ impl PackageManager for Apt {
 
         let packages: Vec<Package> = output
             .lines()
-            .skip(1) // Skip header line
+            .skip(1)
             .filter(|line| !line.is_empty())
             .filter_map(|line| {
                 let parts: Vec<&str> = line.split_whitespace().collect();
@@ -215,7 +212,6 @@ impl PackageManager for Apt {
 
         let output = executor.execute_capture(cmd)?;
 
-        // Parse apt show output
         let mut pkg = Package::new(package.to_string(), "apt".to_string());
 
         for line in output.lines() {
