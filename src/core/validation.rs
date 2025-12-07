@@ -20,6 +20,7 @@ pub fn validate_package_name(name: &str) -> Result<()> {
             && ch != ':'
             && ch != '@'
             && ch != '/'
+            && ch != '*'
         {
             return Err(PacMagicError::InvalidOperation(format!(
                 "Invalid character '{}' in package name '{}'",
@@ -46,6 +47,28 @@ pub fn validate_package_names(names: &[&str]) -> Result<()> {
     Ok(())
 }
 
+/// Validates a search query (more lenient than package names)
+pub fn validate_search_query(query: &str) -> Result<()> {
+    if query.is_empty() {
+        return Err(PacMagicError::InvalidOperation(
+            "Search query cannot be empty".to_string(),
+        ));
+    }
+
+    // For search queries, we're more lenient but still block dangerous characters
+    for ch in query.chars() {
+        // Block shell metacharacters that could cause injection
+        if ch == ';' || ch == '|' || ch == '&' || ch == '`' || ch == '$' || ch == '\n' || ch == '\r' {
+            return Err(PacMagicError::InvalidOperation(format!(
+                "Invalid character '{}' in search query",
+                ch
+            )));
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -61,6 +84,7 @@ mod tests {
         assert!(validate_package_name("core/gcc").is_ok()); // pacman style
         assert!(validate_package_name("package:arch").is_ok()); // debian style
         assert!(validate_package_name("@scope/package").is_ok()); // npm style
+        assert!(validate_package_name("python*").is_ok()); // wildcard for search
     }
 
     #[test]
@@ -79,5 +103,16 @@ mod tests {
     fn test_validate_multiple() {
         assert!(validate_package_names(&["nginx", "python3"]).is_ok());
         assert!(validate_package_names(&["nginx", "bad;name"]).is_err());
+    }
+
+    #[test]
+    fn test_search_query_validation() {
+        assert!(validate_search_query("python").is_ok());
+        assert!(validate_search_query("python3 lib").is_ok()); // spaces ok in search
+        assert!(validate_search_query("lib-ssl").is_ok());
+        assert!(validate_search_query("").is_err());
+        assert!(validate_search_query("bad;query").is_err());
+        assert!(validate_search_query("bad|query").is_err());
+        assert!(validate_search_query("bad`query").is_err());
     }
 }
