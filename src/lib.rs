@@ -71,6 +71,11 @@ impl PacMagic {
         packages: &[&str],
         options: &OperationOptions,
     ) -> Result<()> {
+        // Validate package names to prevent command injection
+        if !packages.is_empty() {
+            core::validate_package_names(packages)?;
+        }
+
         let pm = self.detect_package_manager()?;
 
         if !pm.supports_operation(operation) {

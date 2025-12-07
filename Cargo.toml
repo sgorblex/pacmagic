@@ -2,10 +2,10 @@
 name = "pacmagic"
 version = "0.1.0"
 edition = "2021"
-authors = ["Your Name <your.email@example.com>"]
+authors = ["sgorblex"]
 description = "A universal, extensible package manager wrapper"
 license = "MIT"
-repository = "https://github.com/yourusername/pacmagic"
+repository = "https://github.com/sgorblex/pacmagic"
 keywords = ["package-manager", "wrapper", "cli"]
 categories = ["command-line-utilities"]
 
@@ -16,17 +16,17 @@ clap = { version = "4.4", features = ["derive", "cargo"] }
 # Serialization for config
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-toml = "0.8"
+toml = "0.9"
 
 # Error handling
-thiserror = "1.0"
+thiserror = "2.0"
 anyhow = "1.0"
 
 # Async runtime (for potential future use)
 tokio = { version = "1.35", features = ["full"], optional = true }
 
 # Process execution
-which = "6.0"
+which = "8.0"
 
 # Logging
 log = "0.4"
@@ -34,10 +34,10 @@ env_logger = "0.11"
 
 # Platform detection
 cfg-if = "1.0"
-dirs = "5.0"
+dirs = "6.0"
 
 [dev-dependencies]
-mockall = "0.12"
+mockall = "0.13"
 tempfile = "3.8"
 
 [features]
