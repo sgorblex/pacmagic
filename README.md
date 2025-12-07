@@ -43,11 +43,66 @@ PacMagic uses a trait-based plugin architecture:
 
 ## Quick Start
 
-(Coming soon)
+### Installation
+
+```bash
+cargo install --path .
+```
+
+### Usage
+
+```bash
+# Install packages
+pacmagic install nginx
+
+# Search for packages
+pacmagic search python
+
+# Update package database
+pacmagic update
+
+# Upgrade all packages
+pacmagic upgrade
+
+# Remove packages
+pacmagic remove nginx
+
+# List installed packages
+pacmagic list
+
+# Show package info
+pacmagic info nginx
+```
+
+### Configuration
+
+Initialize a configuration file:
+
+```bash
+pacmagic init-config
+```
+
+Edit `~/.config/pacmagic/config.toml` (Linux) or `~/Library/Application Support/pacmagic/config.toml` (macOS) to customize behavior.
 
 ## Contributing
 
-(Coming soon)
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+### Development
+
+```bash
+# Build
+cargo build
+
+# Run tests
+cargo test
+
+# Run clippy
+cargo clippy --all-targets --all-features
+
+# Format code
+cargo fmt
+```
 
 ## Comparison with Existing Tools
 

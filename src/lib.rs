@@ -71,6 +71,12 @@ impl PacMagic {
         packages: &[&str],
         options: &OperationOptions,
     ) -> Result<()> {
+        // Validate package names to prevent command injection
+        // For search operations, we use a more lenient validation
+        if !packages.is_empty() && operation != Operation::Search {
+            core::validate_package_names(packages)?;
+        }
+
         let pm = self.detect_package_manager()?;
 
         if !pm.supports_operation(operation) {
@@ -87,7 +93,9 @@ impl PacMagic {
             Operation::Upgrade => pm.upgrade(packages, options),
             Operation::UpgradeAll => pm.upgrade_all(options),
             Operation::Search => {
-                let results = pm.search(packages.first().unwrap_or(&""), options)?;
+                let query = packages.first().unwrap_or(&"");
+                core::validate_search_query(query)?;
+                let results = pm.search(query, options)?;
                 for pkg in results {
                     println!("{} - {}", pkg.name, pkg.description.unwrap_or_default());
                 }
@@ -150,5 +158,47 @@ mod tests {
         let config = Config::default();
         let pm = PacMagic::with_config(config);
         assert_eq!(pm.config().general.default_package_manager, "auto");
+    }
+
+    #[test]
+    fn test_validation_prevents_injection() {
+        let config = Config::default();
+        let pm = PacMagic::with_config(config);
+        let options = OperationOptions::default();
+
+        // This should fail due to validation
+        let result = pm.execute(Operation::Install, &["package;ls"], &options);
+        assert!(result.is_err());
+
+        // This should also fail
+        let result = pm.execute(Operation::Install, &["package|cat"], &options);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_search_query_validation() {
+        let config = Config::default();
+        let pm = PacMagic::with_config(config);
+        let options = OperationOptions::default();
+
+        // Search queries with spaces should work (validation passes)
+        let result = pm.execute(Operation::Search, &["python lib"], &options);
+        // This might fail if no package manager is available, but not due to validation
+        if let Err(e) = result {
+            // Should not be an InvalidOperation error from validation
+            // Could be NoPackageManagerFound or other errors
+            if matches!(e, PacMagicError::InvalidOperation(_)) {
+                // If it's InvalidOperation, the message should not be about dangerous characters
+                let msg = format!("{}", e);
+                assert!(!msg.contains("Invalid character"), "Search should allow spaces");
+            }
+        }
+
+        // This should fail due to dangerous characters
+        let result = pm.execute(Operation::Search, &["python;ls"], &options);
+        assert!(result.is_err());
+        if let Err(e) = result {
+            assert!(matches!(e, PacMagicError::InvalidOperation(_)));
+        }
     }
 }

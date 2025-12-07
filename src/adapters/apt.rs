@@ -70,6 +70,7 @@ impl PackageManager for Apt {
                 | Operation::List
                 | Operation::Info
                 | Operation::Clean
+                | Operation::Files
                 | Operation::Check
                 | Operation::Autoremove
         )
@@ -287,6 +288,6 @@ mod tests {
         let apt = Apt::new();
         assert!(apt.supports_operation(Operation::Install));
         assert!(apt.supports_operation(Operation::Search));
-        assert!(!apt.supports_operation(Operation::Files)); // dpkg, but through files()
+        assert!(apt.supports_operation(Operation::Files)); // Supported via dpkg
     }
 }
