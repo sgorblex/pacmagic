@@ -126,7 +126,19 @@ enum Commands {
 fn main() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
-    let cli = Cli::parse();
+    let args: Vec<String> = std::env::args().collect();
+    let mut resolved_args = args.clone();
+
+    if args.len() > 1 {
+        if let Ok(pm) = PacMagic::new() {
+            let config = pm.config();
+            if let Some(op) = config.resolve_alias(&args[1]) {
+                resolved_args[1] = op.to_string();
+            }
+        }
+    }
+
+    let cli = Cli::parse_from(resolved_args);
 
     if let Err(e) = run(cli) {
         eprintln!("Error: {}", e);

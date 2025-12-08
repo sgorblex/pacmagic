@@ -122,8 +122,18 @@ impl Config {
         let contents = fs::read_to_string(path)
             .map_err(|e| PacMagicError::ConfigError(format!("Failed to read config: {}", e)))?;
 
-        let config: Config = toml::from_str(&contents)
+        let mut config: Config = toml::from_str(&contents)
             .map_err(|e| PacMagicError::ConfigError(format!("Failed to parse config: {}", e)))?;
+
+        let mut default_aliases = HashMap::new();
+        for op in Operation::all() {
+            for alias in op.default_aliases() {
+                default_aliases.insert(alias.to_string(), op.to_string());
+            }
+        }
+        for (alias, op) in default_aliases {
+            config.aliases.entry(alias).or_insert(op);
+        }
 
         Ok(config)
     }
