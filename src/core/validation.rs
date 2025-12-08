@@ -1,6 +1,6 @@
 use super::error::{PacMagicError, Result};
 
-/// Validates a package name to prevent command injection
+/// Validates a package name to prevent command injection using a whitelist approach
 pub fn validate_package_name(name: &str) -> Result<()> {
     if name.is_empty() {
         return Err(PacMagicError::InvalidOperation(
@@ -8,32 +8,19 @@ pub fn validate_package_name(name: &str) -> Result<()> {
         ));
     }
 
-    // Check for dangerous characters that could be used for command injection
-    // Allow alphanumeric, hyphen, underscore, period, plus, tilde, and colon (for arch packages)
+    if name.starts_with('-') {
+        return Err(PacMagicError::InvalidOperation(
+            "Package name cannot start with '-'".to_string(),
+        ));
+    }
+
     for ch in name.chars() {
-        if !ch.is_alphanumeric()
-            && ch != '-'
-            && ch != '_'
-            && ch != '.'
-            && ch != '+'
-            && ch != '~'
-            && ch != ':'
-            && ch != '@'
-            && ch != '/'
-            && ch != '*'
-        {
+        if !matches!(ch, 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '.' | '+' | '~' | ':' | '@' | '/' | '*') {
             return Err(PacMagicError::InvalidOperation(format!(
                 "Invalid character '{}' in package name '{}'",
                 ch, name
             )));
         }
-    }
-
-    // Check for shell metacharacters at the start
-    if name.starts_with('-') {
-        return Err(PacMagicError::InvalidOperation(
-            "Package name cannot start with '-'".to_string(),
-        ));
     }
 
     Ok(())
@@ -55,10 +42,8 @@ pub fn validate_search_query(query: &str) -> Result<()> {
         ));
     }
 
-    // For search queries, we're more lenient but still block dangerous characters
     for ch in query.chars() {
-        // Block shell metacharacters that could cause injection
-        if ch == ';' || ch == '|' || ch == '&' || ch == '`' || ch == '$' || ch == '\n' || ch == '\r' {
+        if matches!(ch, ';' | '|' | '&' | '`' | '$' | '\n' | '\r') {
             return Err(PacMagicError::InvalidOperation(format!(
                 "Invalid character '{}' in search query",
                 ch
