@@ -1,6 +1,4 @@
-use crate::core::{
-    CommandExecutor, Operation, OperationOptions, PacMagicError, Package, PackageManager, Result,
-};
+use crate::core::{CommandExecutor, Operation, OperationOptions, Package, PackageManager, Result};
 use std::process::Command;
 
 pub struct Pacman;
@@ -74,6 +72,7 @@ impl PackageManager for Pacman {
                 | Operation::Clean
                 | Operation::Files
                 | Operation::Check
+                | Operation::Autoremove
         )
     }
 
@@ -273,12 +272,26 @@ impl PackageManager for Pacman {
         executor.execute_checked(cmd)
     }
 
-    fn autoremove(&self, _options: &OperationOptions) -> Result<()> {
-        // Pacman doesn't have autoremove, but orphans can be removed with -Qtdq | pacman -Rns -
-        Err(PacMagicError::OperationNotSupported {
-            pm: "pacman".to_string(),
-            op: "autoremove".to_string(),
-        })
+    fn autoremove(&self, options: &OperationOptions) -> Result<()> {
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
+
+        let mut list_cmd = Command::new("pacman");
+        list_cmd.arg("-Qtdq");
+
+        let output = executor.execute_capture(list_cmd)?;
+        let orphans: Vec<&str> = output.lines().filter(|line| !line.is_empty()).collect();
+
+        if orphans.is_empty() {
+            return Ok(());
+        }
+
+        let mut remove_cmd = self.build_command(options);
+        remove_cmd.arg("-Rns");
+        remove_cmd.args(orphans);
+        remove_cmd.args(&options.extra_flags);
+
+        executor.execute_interactive(remove_cmd)
     }
 }
 
@@ -297,6 +310,6 @@ mod tests {
         let pacman = Pacman::new();
         assert!(pacman.supports_operation(Operation::Install));
         assert!(pacman.supports_operation(Operation::Files));
-        assert!(!pacman.supports_operation(Operation::Autoremove));
+        assert!(pacman.supports_operation(Operation::Autoremove));
     }
 }

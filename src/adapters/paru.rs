@@ -1,6 +1,4 @@
-use crate::core::{
-    CommandExecutor, Operation, OperationOptions, PacMagicError, Package, PackageManager, Result,
-};
+use crate::core::{CommandExecutor, Operation, OperationOptions, Package, PackageManager, Result};
 use std::process::Command;
 
 pub struct Paru;
@@ -68,6 +66,7 @@ impl PackageManager for Paru {
                 | Operation::Clean
                 | Operation::Files
                 | Operation::Check
+                | Operation::Autoremove
         )
     }
 
@@ -266,11 +265,26 @@ impl PackageManager for Paru {
         executor.execute_checked(cmd)
     }
 
-    fn autoremove(&self, _options: &OperationOptions) -> Result<()> {
-        Err(PacMagicError::OperationNotSupported {
-            pm: "paru".to_string(),
-            op: "autoremove".to_string(),
-        })
+    fn autoremove(&self, options: &OperationOptions) -> Result<()> {
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
+
+        let mut list_cmd = Command::new("paru");
+        list_cmd.arg("-Qtdq");
+
+        let output = executor.execute_capture(list_cmd)?;
+        let orphans: Vec<&str> = output.lines().filter(|line| !line.is_empty()).collect();
+
+        if orphans.is_empty() {
+            return Ok(());
+        }
+
+        let mut remove_cmd = self.build_command(options);
+        remove_cmd.arg("-Rns");
+        remove_cmd.args(orphans);
+        remove_cmd.args(&options.extra_flags);
+
+        executor.execute_interactive(remove_cmd)
     }
 }
 
@@ -289,7 +303,7 @@ mod tests {
         let paru = Paru::new();
         assert!(paru.supports_operation(Operation::Install));
         assert!(paru.supports_operation(Operation::Search));
-        assert!(!paru.supports_operation(Operation::Autoremove));
+        assert!(paru.supports_operation(Operation::Autoremove));
     }
 
     #[test]
