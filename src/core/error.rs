@@ -56,6 +56,15 @@ impl PacMagicError {
             PacMagicError::PermissionDenied(_) => {
                 Some("Try running with elevated permissions (sudo) or check file permissions")
             }
+            PacMagicError::PackageManagerNotAvailable(_) => {
+                Some("The specified package manager is not installed or not in PATH")
+            }
+            PacMagicError::InvalidOperation(_) => {
+                Some("Check your input for invalid characters or format")
+            }
+            PacMagicError::ConfigError(_) => {
+                Some("Check your configuration file syntax at ~/.config/pacmagic/config.toml")
+            }
             _ => None,
         }
     }
