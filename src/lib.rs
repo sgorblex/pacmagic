@@ -45,11 +45,6 @@ impl PacMagic {
         &self.registry
     }
 
-    /// Get a mutable reference to the adapter registry
-    pub fn registry_mut(&mut self) -> &mut AdapterRegistry {
-        &mut self.registry
-    }
-
     /// Auto-detect the best package manager for the current system
     pub fn detect_package_manager(&self) -> Result<std::sync::Arc<dyn PackageManager>> {
         if self.config.general.default_package_manager != "auto" {
@@ -77,8 +72,6 @@ impl PacMagic {
         if options.install_behavior == InstallBehavior::Default {
             options.install_behavior = self.config.general.install_behavior;
         }
-        // Validate package names to prevent command injection
-        // For search operations, we use a more lenient validation
         if !packages.is_empty() && operation != Operation::Search {
             core::validate_package_names(packages)?;
         }
