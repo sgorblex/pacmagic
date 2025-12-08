@@ -1,4 +1,6 @@
-use crate::core::{CommandExecutor, Operation, OperationOptions, Package, PackageManager, Result};
+use crate::core::{
+    CommandExecutor, InstallBehavior, Operation, OperationOptions, Package, PackageManager, Result,
+};
 use std::process::Command;
 
 pub struct Apt;
@@ -82,6 +84,17 @@ impl PackageManager for Apt {
         let mut cmd = self.build_command(options);
 
         cmd.arg("install");
+
+        match options.install_behavior {
+            InstallBehavior::Reinstall => {
+                cmd.arg("--reinstall");
+            }
+            InstallBehavior::Skip => {
+                cmd.arg("--skip-if-installed");
+            }
+            InstallBehavior::Upgrade | InstallBehavior::Default => {}
+        }
+
         cmd.args(packages);
         cmd.args(&options.extra_flags);
 

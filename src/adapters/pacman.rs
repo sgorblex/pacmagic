@@ -1,4 +1,6 @@
-use crate::core::{CommandExecutor, Operation, OperationOptions, Package, PackageManager, Result};
+use crate::core::{
+    CommandExecutor, InstallBehavior, Operation, OperationOptions, Package, PackageManager, Result,
+};
 use std::process::Command;
 
 pub struct Pacman;
@@ -82,6 +84,17 @@ impl PackageManager for Pacman {
         let mut cmd = self.build_command(options);
 
         cmd.arg("-S");
+
+        match options.install_behavior {
+            InstallBehavior::Reinstall => {
+                cmd.arg("--overwrite");
+            }
+            InstallBehavior::Skip => {
+                cmd.arg("--needed");
+            }
+            InstallBehavior::Upgrade | InstallBehavior::Default => {}
+        }
+
         cmd.args(packages);
         cmd.args(&options.extra_flags);
 

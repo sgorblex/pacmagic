@@ -14,6 +14,10 @@ verbose = false
 # Use sudo by default
 use_sudo = true
 
+# Default behavior when installing packages that are already installed
+# Options: "default" (package manager default), "upgrade", "reinstall", "skip"
+install_behavior = "default"
+
 # Command aliases
 # Map short commands to operations
 [aliases]

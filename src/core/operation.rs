@@ -2,6 +2,53 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
 
+/// Behavior when installing a package that is already installed
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum InstallBehavior {
+    /// Default behavior for the package manager (usually upgrade)
+    #[serde(alias = "default")]
+    Default,
+
+    /// Upgrade the package if a newer version is available
+    #[serde(alias = "upgrade")]
+    Upgrade,
+
+    /// Reinstall the package even if already installed
+    #[serde(alias = "reinstall")]
+    Reinstall,
+
+    /// Skip installation if package is already installed
+    #[serde(alias = "skip")]
+    Skip,
+}
+
+impl fmt::Display for InstallBehavior {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            InstallBehavior::Default => "default",
+            InstallBehavior::Upgrade => "upgrade",
+            InstallBehavior::Reinstall => "reinstall",
+            InstallBehavior::Skip => "skip",
+        };
+        write!(f, "{}", s)
+    }
+}
+
+impl FromStr for InstallBehavior {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "default" => Ok(InstallBehavior::Default),
+            "upgrade" => Ok(InstallBehavior::Upgrade),
+            "reinstall" => Ok(InstallBehavior::Reinstall),
+            "skip" => Ok(InstallBehavior::Skip),
+            _ => Err(format!("Unknown install behavior: {}", s)),
+        }
+    }
+}
+
 /// Core package management operations
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Operation {
@@ -136,6 +183,9 @@ pub struct OperationOptions {
     /// Print the command before executing (default: true)
     pub show_commands: bool,
 
+    /// Behavior when installing packages that are already installed
+    pub install_behavior: InstallBehavior,
+
     /// Additional flags to pass to the package manager
     pub extra_flags: Vec<String>,
 
@@ -151,6 +201,7 @@ impl Default for OperationOptions {
             verbose: false,
             dry_run: false,
             show_commands: true,
+            install_behavior: InstallBehavior::Default,
             extra_flags: Vec::new(),
             force: false,
         }
@@ -189,6 +240,11 @@ impl OperationOptions {
 
     pub fn with_show_commands(mut self, value: bool) -> Self {
         self.show_commands = value;
+        self
+    }
+
+    pub fn with_install_behavior(mut self, behavior: InstallBehavior) -> Self {
+        self.install_behavior = behavior;
         self
     }
 }

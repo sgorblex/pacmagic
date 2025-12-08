@@ -5,7 +5,9 @@ pub mod platform;
 
 pub use adapters::AdapterRegistry;
 pub use config::Config;
-pub use core::{Operation, OperationOptions, PacMagicError, Package, PackageManager, Result};
+pub use core::{
+    InstallBehavior, Operation, OperationOptions, PacMagicError, Package, PackageManager, Result,
+};
 pub use platform::PlatformDetector;
 
 /// Main context for PacMagic operations
@@ -71,6 +73,10 @@ impl PacMagic {
         packages: &[&str],
         options: &OperationOptions,
     ) -> Result<()> {
+        let mut options = options.clone();
+        if options.install_behavior == InstallBehavior::Default {
+            options.install_behavior = self.config.general.install_behavior;
+        }
         // Validate package names to prevent command injection
         // For search operations, we use a more lenient validation
         if !packages.is_empty() && operation != Operation::Search {
@@ -87,22 +93,22 @@ impl PacMagic {
         }
 
         match operation {
-            Operation::Install => pm.install(packages, options),
-            Operation::Remove => pm.remove(packages, options),
-            Operation::Update => pm.update(options),
-            Operation::Upgrade => pm.upgrade(packages, options),
-            Operation::UpgradeAll => pm.upgrade_all(options),
+            Operation::Install => pm.install(packages, &options),
+            Operation::Remove => pm.remove(packages, &options),
+            Operation::Update => pm.update(&options),
+            Operation::Upgrade => pm.upgrade(packages, &options),
+            Operation::UpgradeAll => pm.upgrade_all(&options),
             Operation::Search => {
                 let query = packages.first().unwrap_or(&"");
                 core::validate_search_query(query)?;
-                let results = pm.search(query, options)?;
+                let results = pm.search(query, &options)?;
                 for pkg in results {
                     println!("{} - {}", pkg.name, pkg.description.unwrap_or_default());
                 }
                 Ok(())
             }
             Operation::List => {
-                let results = pm.list_installed(options)?;
+                let results = pm.list_installed(&options)?;
                 for pkg in results {
                     println!("{} {}", pkg.name, pkg.version.as_deref().unwrap_or(""));
                 }
@@ -110,7 +116,7 @@ impl PacMagic {
             }
             Operation::Info => {
                 for package in packages {
-                    let info = pm.info(package, options)?;
+                    let info = pm.info(package, &options)?;
                     println!("Package: {}", info.name);
                     if let Some(version) = &info.version {
                         println!("Version: {}", version);
@@ -121,18 +127,18 @@ impl PacMagic {
                 }
                 Ok(())
             }
-            Operation::Clean => pm.clean(options),
+            Operation::Clean => pm.clean(&options),
             Operation::Files => {
                 for package in packages {
-                    let files = pm.files(package, options)?;
+                    let files = pm.files(package, &options)?;
                     for file in files {
                         println!("{}", file);
                     }
                 }
                 Ok(())
             }
-            Operation::Check => pm.check(options),
-            Operation::Autoremove => pm.autoremove(options),
+            Operation::Check => pm.check(&options),
+            Operation::Autoremove => pm.autoremove(&options),
         }
     }
 }

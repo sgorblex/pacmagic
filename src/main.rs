@@ -1,6 +1,25 @@
-use clap::{Parser, Subcommand};
-use pacmagic::{Config, Operation, OperationOptions, PacMagic};
+use clap::{Parser, Subcommand, ValueEnum};
+use pacmagic::{Config, InstallBehavior, Operation, OperationOptions, PacMagic};
 use std::process;
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum InstallBehaviorArg {
+    Default,
+    Upgrade,
+    Reinstall,
+    Skip,
+}
+
+impl From<InstallBehaviorArg> for InstallBehavior {
+    fn from(arg: InstallBehaviorArg) -> Self {
+        match arg {
+            InstallBehaviorArg::Default => InstallBehavior::Default,
+            InstallBehaviorArg::Upgrade => InstallBehavior::Upgrade,
+            InstallBehaviorArg::Reinstall => InstallBehavior::Reinstall,
+            InstallBehaviorArg::Skip => InstallBehavior::Skip,
+        }
+    }
+}
 
 #[derive(Parser)]
 #[command(name = "pacmagic")]
@@ -28,6 +47,10 @@ struct Cli {
     /// Hide the command being executed (commands are shown by default)
     #[arg(short = 'q', long = "quiet", global = true)]
     quiet: bool,
+
+    /// Behavior when installing packages that are already installed
+    #[arg(long = "install-behavior", value_enum, global = true)]
+    install_behavior: Option<InstallBehaviorArg>,
 }
 
 #[derive(Subcommand)]
@@ -121,11 +144,15 @@ fn run(cli: Cli) -> pacmagic::Result<()> {
         pm.config_mut().general.default_package_manager = pm_name.clone();
     }
 
-    let options = OperationOptions::new()
+    let mut options = OperationOptions::new()
         .with_verbose(cli.verbose)
         .with_dry_run(cli.dry_run)
         .with_no_confirm(cli.yes)
         .with_show_commands(!cli.quiet);
+
+    if let Some(behavior) = cli.install_behavior {
+        options = options.with_install_behavior(behavior.into());
+    }
 
     match cli.command {
         Commands::Install { packages } => {

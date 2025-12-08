@@ -1,5 +1,6 @@
 use crate::core::{
-    CommandExecutor, Operation, OperationOptions, PacMagicError, Package, PackageManager, Result,
+    CommandExecutor, InstallBehavior, Operation, OperationOptions, PacMagicError, Package,
+    PackageManager, Result,
 };
 use std::process::Command;
 
@@ -74,7 +75,15 @@ impl PackageManager for Brew {
             .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
-        cmd.arg("install");
+        match options.install_behavior {
+            InstallBehavior::Reinstall => {
+                cmd.arg("reinstall");
+            }
+            InstallBehavior::Upgrade | InstallBehavior::Default | InstallBehavior::Skip => {
+                cmd.arg("install");
+            }
+        }
+
         cmd.args(packages);
         cmd.args(&options.extra_flags);
 

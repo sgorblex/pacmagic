@@ -1,4 +1,4 @@
-use crate::core::{Operation, PacMagicError, Result};
+use crate::core::{InstallBehavior, Operation, PacMagicError, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -28,6 +28,10 @@ pub struct GeneralConfig {
     /// Use sudo by default
     #[serde(default = "default_true")]
     pub use_sudo: bool,
+
+    /// Default behavior when installing packages that are already installed
+    #[serde(default = "default_install_behavior")]
+    pub install_behavior: InstallBehavior,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,6 +60,10 @@ fn default_true() -> bool {
     true
 }
 
+fn default_install_behavior() -> InstallBehavior {
+    InstallBehavior::Default
+}
+
 impl Default for GeneralConfig {
     fn default() -> Self {
         Self {
@@ -63,6 +71,7 @@ impl Default for GeneralConfig {
             confirm_before_install: true,
             verbose: false,
             use_sudo: true,
+            install_behavior: default_install_behavior(),
         }
     }
 }
