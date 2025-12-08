@@ -55,6 +55,7 @@ src/adapters/
 ├── mod.rs          # Registry and common utilities
 ├── apt.rs          # Debian/Ubuntu apt
 ├── pacman.rs       # Arch Linux pacman
+├── paru.rs         # Arch Linux AUR helper (paru)
 ├── brew.rs         # macOS Homebrew
 ├── dnf.rs          # Fedora DNF
 ├── winget.rs       # Windows Package Manager
@@ -86,8 +87,13 @@ extra_flags = ["--yes"]
 
 [package_managers.pacman]
 enabled = true
-use_aur_helper = "paru"  # or "yay", "none"
-aur_enabled = true
+use_sudo = true
+extra_flags = []
+
+[package_managers.paru]
+enabled = true
+use_sudo = true
+extra_flags = []
 ```
 
 ### 5. Command Router
@@ -209,10 +215,11 @@ impl PackageManager for Zypper {
 
 ### AUR (Arch User Repository)
 
-Pacman adapter checks for AUR helpers:
-- If `aur_enabled = true` in config
-- Detect available helper (paru, yay, etc.)
-- Delegate AUR operations to helper
+AUR helpers are implemented as separate package manager adapters:
+- Each helper (paru, yay, etc.) has its own adapter implementing `PackageManager`
+- Paru adapter has higher priority (100) than pacman (95) on Arch Linux
+- This allows users to explicitly choose: `pacmagic -p paru install package` vs `pacmagic -p pacman install package`
+- Auto-detection will prefer paru when available, as it can handle both official repos and AUR
 
 ### PPAs (Personal Package Archives)
 

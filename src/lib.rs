@@ -190,7 +190,10 @@ mod tests {
             if matches!(e, PacMagicError::InvalidOperation(_)) {
                 // If it's InvalidOperation, the message should not be about dangerous characters
                 let msg = format!("{}", e);
-                assert!(!msg.contains("Invalid character"), "Search should allow spaces");
+                assert!(
+                    !msg.contains("Invalid character"),
+                    "Search should allow spaces"
+                );
             }
         }
 

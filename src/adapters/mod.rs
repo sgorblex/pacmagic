@@ -1,6 +1,7 @@
 pub mod apt;
 pub mod brew;
 pub mod pacman;
+pub mod paru;
 
 use crate::core::{PacMagicError, PackageManager, Result};
 use std::sync::Arc;
@@ -16,6 +17,7 @@ impl AdapterRegistry {
         let adapters: Vec<Arc<dyn PackageManager>> = vec![
             Arc::new(apt::Apt::new()),
             Arc::new(pacman::Pacman::new()),
+            Arc::new(paru::Paru::new()),
             Arc::new(brew::Brew::new()),
         ];
 
@@ -73,7 +75,7 @@ mod tests {
     #[test]
     fn test_registry_creation() {
         let registry = AdapterRegistry::new();
-        assert!(registry.all().len() >= 3); // At least apt, pacman, brew
+        assert!(registry.all().len() >= 4);
     }
 
     #[test]
@@ -82,6 +84,7 @@ mod tests {
 
         assert!(registry.get("apt").is_some());
         assert!(registry.get("pacman").is_some());
+        assert!(registry.get("paru").is_some());
         assert!(registry.get("brew").is_some());
         assert!(registry.get("nonexistent").is_none());
     }

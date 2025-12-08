@@ -15,7 +15,8 @@ pub fn validate_package_name(name: &str) -> Result<()> {
     }
 
     for ch in name.chars() {
-        if !matches!(ch, 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '.' | '+' | '~' | ':' | '@' | '/' | '*') {
+        if !matches!(ch, 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '.' | '+' | '~' | ':' | '@' | '/' | '*')
+        {
             return Err(PacMagicError::InvalidOperation(format!(
                 "Invalid character '{}' in package name '{}'",
                 ch, name

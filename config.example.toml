@@ -35,9 +35,11 @@ extra_flags = []
 [package_managers.pacman]
 enabled = true
 use_sudo = true
-# Use an AUR helper (paru, yay, or none)
-aur_helper = "paru"
-aur_enabled = true
+extra_flags = []
+
+[package_managers.paru]
+enabled = true
+use_sudo = false  # Paru handles sudo internally
 extra_flags = []
 
 [package_managers.brew]
