@@ -352,4 +352,52 @@ mod tests {
         let ops = config.resolve_alias_sequence("install");
         assert_eq!(ops, Some(vec![Operation::Install]));
     }
+
+    #[test]
+    fn test_alias_resolution_with_package_manager_specified() {
+        let mut config = Config::default();
+        config.aliases.insert(
+            "custom-install".to_string(),
+            AliasValue::Single("install".to_string()),
+        );
+        config.aliases.insert(
+            "custom-sync".to_string(),
+            AliasValue::Multiple(vec!["update".to_string(), "upgrade-all".to_string()]),
+        );
+
+        config.general.default_package_manager = "pacman".to_string();
+
+        assert_eq!(
+            config.resolve_alias("custom-install"),
+            Some(Operation::Install)
+        );
+        assert_eq!(config.resolve_alias("i"), Some(Operation::Install));
+
+        let ops = config.resolve_alias_sequence("custom-sync");
+        assert!(ops.is_some());
+        let ops = ops.unwrap();
+        assert_eq!(ops.len(), 2);
+        assert_eq!(ops[0], Operation::Update);
+        assert_eq!(ops[1], Operation::UpgradeAll);
+    }
+
+    #[test]
+    fn test_alias_resolution_works_regardless_of_package_manager() {
+        let mut configs = vec![Config::default()];
+
+        let mut config_pacman = Config::default();
+        config_pacman.general.default_package_manager = "pacman".to_string();
+        configs.push(config_pacman);
+
+        let mut config_apt = Config::default();
+        config_apt.general.default_package_manager = "apt".to_string();
+        configs.push(config_apt);
+
+        for config in configs {
+            assert_eq!(config.resolve_alias("i"), Some(Operation::Install));
+            assert_eq!(config.resolve_alias("rm"), Some(Operation::Remove));
+            assert_eq!(config.resolve_alias("up"), Some(Operation::Update));
+            assert_eq!(config.resolve_alias("s"), Some(Operation::Search));
+        }
+    }
 }

@@ -51,6 +51,10 @@ struct Cli {
     /// Behavior when installing packages that are already installed
     #[arg(long = "install-behavior", value_enum, global = true)]
     install_behavior: Option<InstallBehaviorArg>,
+
+    /// Pass additional arguments directly to the package manager
+    #[arg(long = "pm-args", global = true, num_args = 1..)]
+    pm_args: Option<Vec<String>>,
 }
 
 #[derive(Subcommand)]
@@ -137,6 +141,7 @@ fn main() {
 
     let mut default_command_used = false;
     let mut multi_command_alias: Option<Vec<Operation>> = None;
+    let mut package_manager_specified = false;
 
     if args.len() == 1 {
         if let Ok(pm) = PacMagic::new() {
@@ -157,6 +162,10 @@ fn main() {
             }
         }
     } else if args.len() > 1 {
+        package_manager_specified = args
+            .iter()
+            .any(|a| a == "-p" || a == "--package-manager" || a.starts_with("--package-manager="));
+
         if let Ok(pm) = PacMagic::new() {
             let config = pm.config();
             if let Some(ops) = config.resolve_alias_sequence(&args[1]) {
@@ -171,7 +180,42 @@ fn main() {
         }
     }
 
-    let cli = Cli::parse_from(resolved_args);
+    let mut cli = match Cli::try_parse_from(resolved_args.clone()) {
+        Ok(cli) => cli,
+        Err(e) if package_manager_specified => {
+            let unknown_args = extract_unknown_args(&args, &e);
+            let filtered_args: Vec<String> = filter_unknown_args(&resolved_args, &unknown_args);
+            match Cli::try_parse_from(filtered_args) {
+                Ok(mut cli) => {
+                    if !unknown_args.is_empty() {
+                        if let Some(existing) = &mut cli.pm_args {
+                            existing.extend(unknown_args);
+                        } else {
+                            cli.pm_args = Some(unknown_args);
+                        }
+                    }
+                    cli
+                }
+                Err(e2) => {
+                    eprintln!("{}", e2);
+                    process::exit(1);
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("{}", e);
+            process::exit(1);
+        }
+    };
+
+    let unknown_args = extract_unknown_args_after_dash(&args);
+    if !unknown_args.is_empty() {
+        if let Some(existing) = &mut cli.pm_args {
+            existing.extend(unknown_args);
+        } else {
+            cli.pm_args = Some(unknown_args);
+        }
+    }
 
     if let Some(ops) = multi_command_alias {
         if let Err(e) = run_multi_command(cli, ops) {
@@ -201,6 +245,11 @@ fn run_multi_command(cli: Cli, operations: Vec<Operation>) -> pacmagic::Result<(
         pm.config_mut().general.default_package_manager = pm_name.clone();
     }
 
+    let mut extra_flags = Vec::new();
+    if let Some(pm_args) = &cli.pm_args {
+        extra_flags.extend_from_slice(pm_args);
+    }
+
     let options = OperationOptions::new()
         .with_verbose(cli.verbose)
         .with_dry_run(cli.dry_run)
@@ -210,13 +259,144 @@ fn run_multi_command(cli: Cli, operations: Vec<Operation>) -> pacmagic::Result<(
             cli.install_behavior
                 .map(Into::into)
                 .unwrap_or(InstallBehavior::Default),
-        );
+        )
+        .append_extra_flags(&extra_flags);
 
     for op in operations {
         pm.execute(op, &[], &options)?;
     }
 
     Ok(())
+}
+
+fn extract_unknown_args(args: &[String], _error: &clap::Error) -> Vec<String> {
+    let known_global_flags = [
+        "-p",
+        "--package-manager",
+        "-v",
+        "--verbose",
+        "-n",
+        "--dry-run",
+        "-y",
+        "--yes",
+        "-q",
+        "--quiet",
+        "--install-behavior",
+        "--pm-args",
+    ];
+
+    let known_commands = [
+        "install",
+        "remove",
+        "update",
+        "upgrade",
+        "search",
+        "list",
+        "info",
+        "clean",
+        "files",
+        "check",
+        "autoremove",
+        "detect",
+        "completions",
+        "init-config",
+        "owns",
+    ];
+
+    let mut unknown = Vec::new();
+    let mut i = 0;
+    let mut in_command = false;
+
+    while i < args.len() {
+        let arg = &args[i];
+
+        if arg == "--" {
+            break;
+        }
+
+        if arg == "pacmagic" || arg.ends_with("/pacmagic") {
+            i += 1;
+            continue;
+        }
+
+        if known_commands.contains(&arg.as_str()) {
+            in_command = true;
+            i += 1;
+            continue;
+        }
+
+        if arg.starts_with("--package-manager=") || arg.starts_with("--pm-args") {
+            i += 1;
+            continue;
+        }
+
+        if arg == "-p" || arg == "--package-manager" {
+            i += 1;
+            if i < args.len() {
+                i += 1;
+            }
+            continue;
+        }
+
+        if known_global_flags.contains(&arg.as_str()) {
+            i += 1;
+            if (arg == "-v" || arg == "-n" || arg == "-y" || arg == "-q")
+                && i < args.len()
+                && !args[i].starts_with('-')
+            {
+                i += 1;
+            }
+            continue;
+        }
+
+        if arg.starts_with("--install-behavior") {
+            if arg.contains('=') {
+                i += 1;
+            } else {
+                i += 1;
+                if i < args.len() {
+                    i += 1;
+                }
+            }
+            continue;
+        }
+
+        if arg.starts_with('-') && !in_command {
+            unknown.push(arg.clone());
+            if arg.len() == 2 && i + 1 < args.len() && !args[i + 1].starts_with('-') {
+                i += 1;
+                unknown.push(args[i].clone());
+            }
+        }
+
+        i += 1;
+    }
+
+    unknown
+}
+
+fn filter_unknown_args(args: &[String], unknown: &[String]) -> Vec<String> {
+    args.iter()
+        .filter(|a| !unknown.contains(a))
+        .cloned()
+        .collect()
+}
+
+fn extract_unknown_args_after_dash(args: &[String]) -> Vec<String> {
+    let mut unknown = Vec::new();
+    let mut found_dash = false;
+
+    for arg in args {
+        if arg == "--" {
+            found_dash = true;
+            continue;
+        }
+        if found_dash {
+            unknown.push(arg.clone());
+        }
+    }
+
+    unknown
 }
 
 fn run(cli: Cli, default_command_used: bool) -> pacmagic::Result<()> {
@@ -226,11 +406,17 @@ fn run(cli: Cli, default_command_used: bool) -> pacmagic::Result<()> {
         pm.config_mut().general.default_package_manager = pm_name.clone();
     }
 
+    let mut extra_flags = Vec::new();
+    if let Some(pm_args) = &cli.pm_args {
+        extra_flags.extend_from_slice(pm_args);
+    }
+
     let mut options = OperationOptions::new()
         .with_verbose(cli.verbose)
         .with_dry_run(cli.dry_run)
         .with_no_confirm(cli.yes)
-        .with_show_commands(!cli.quiet);
+        .with_show_commands(!cli.quiet)
+        .append_extra_flags(&extra_flags);
 
     if let Some(behavior) = cli.install_behavior {
         options = options.with_install_behavior(behavior.into());

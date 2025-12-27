@@ -253,4 +253,41 @@ impl OperationOptions {
         self.install_behavior = behavior;
         self
     }
+
+    pub fn with_extra_flags(mut self, flags: Vec<String>) -> Self {
+        self.extra_flags = flags;
+        self
+    }
+
+    pub fn append_extra_flags(mut self, flags: &[String]) -> Self {
+        self.extra_flags.extend_from_slice(flags);
+        self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_operation_options_extra_flags() {
+        let options = OperationOptions::new()
+            .with_extra_flags(vec!["--test-flag".to_string(), "-v".to_string()]);
+
+        assert_eq!(options.extra_flags.len(), 2);
+        assert_eq!(options.extra_flags[0], "--test-flag");
+        assert_eq!(options.extra_flags[1], "-v");
+    }
+
+    #[test]
+    fn test_operation_options_append_extra_flags() {
+        let options = OperationOptions::new()
+            .append_extra_flags(&["--flag1".to_string()])
+            .append_extra_flags(&["--flag2".to_string(), "--flag3".to_string()]);
+
+        assert_eq!(options.extra_flags.len(), 3);
+        assert_eq!(options.extra_flags[0], "--flag1");
+        assert_eq!(options.extra_flags[1], "--flag2");
+        assert_eq!(options.extra_flags[2], "--flag3");
+    }
 }
