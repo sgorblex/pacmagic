@@ -75,6 +75,7 @@ impl PackageManager for Apt {
                 | Operation::Files
                 | Operation::Check
                 | Operation::Autoremove
+                | Operation::Owns
         )
     }
 
@@ -283,6 +284,54 @@ impl PackageManager for Apt {
         cmd.args(&options.extra_flags);
 
         executor.execute_interactive(cmd)
+    }
+
+    fn owns(&self, file_or_command: &str, options: &OperationOptions) -> Result<String> {
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
+
+        let path = if std::path::Path::new(file_or_command).exists() {
+            file_or_command.to_string()
+        } else {
+            let mut which_cmd = Command::new("which");
+            which_cmd.arg(file_or_command);
+            match executor.execute_capture(which_cmd) {
+                Ok(output) => {
+                    let resolved = output.trim().to_string();
+                    if resolved.is_empty() {
+                        return Err(crate::core::error::PacMagicError::ExecutionError(format!(
+                            "Command '{}' not found in PATH",
+                            file_or_command
+                        )));
+                    }
+                    resolved
+                }
+                Err(_) => {
+                    return Err(crate::core::error::PacMagicError::ExecutionError(format!(
+                        "File or command '{}' not found",
+                        file_or_command
+                    )));
+                }
+            }
+        };
+
+        let mut cmd = Command::new("dpkg");
+        cmd.arg("-S");
+        cmd.arg(&path);
+
+        let output = executor.execute_capture(cmd)?;
+
+        let package = output
+            .lines()
+            .next()
+            .and_then(|line| line.split(':').next())
+            .ok_or_else(|| {
+                crate::core::error::PacMagicError::ExecutionError(
+                    "No package found for the given file or command".to_string(),
+                )
+            })?;
+
+        Ok(package.trim().to_string())
     }
 }
 

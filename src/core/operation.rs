@@ -87,6 +87,9 @@ pub enum Operation {
 
     /// Autoremove unused dependencies
     Autoremove,
+
+    /// Find which package owns a file or command
+    Owns,
 }
 
 impl Operation {
@@ -105,6 +108,7 @@ impl Operation {
             Operation::Files,
             Operation::Check,
             Operation::Autoremove,
+            Operation::Owns,
         ]
     }
 
@@ -123,6 +127,7 @@ impl Operation {
             Operation::Files => &["files", "ls-files"],
             Operation::Check => &["check", "verify"],
             Operation::Autoremove => &["autoremove", "auto-remove"],
+            Operation::Owns => &["owns", "owner", "which-package"],
         }
     }
 
@@ -160,6 +165,7 @@ impl fmt::Display for Operation {
             Operation::Files => "files",
             Operation::Check => "check",
             Operation::Autoremove => "autoremove",
+            Operation::Owns => "owns",
         };
         write!(f, "{}", s)
     }

@@ -55,6 +55,9 @@ pub trait PackageManager: Send + Sync {
 
     /// Remove unused dependencies
     fn autoremove(&self, options: &OperationOptions) -> Result<()>;
+
+    /// Find which package owns a file or command
+    fn owns(&self, file_or_command: &str, options: &OperationOptions) -> Result<String>;
 }
 
 /// Extension trait for package managers with additional features

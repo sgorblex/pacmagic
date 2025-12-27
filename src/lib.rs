@@ -132,6 +132,16 @@ impl PacMagic {
             }
             Operation::Check => pm.check(&options),
             Operation::Autoremove => pm.autoremove(&options),
+            Operation::Owns => {
+                let file_or_command = packages.first().ok_or_else(|| {
+                    PacMagicError::InvalidOperation(
+                        "File or command name required for owns operation".to_string(),
+                    )
+                })?;
+                let package = pm.owns(file_or_command, &options)?;
+                println!("{}", package);
+                Ok(())
+            }
         }
     }
 }

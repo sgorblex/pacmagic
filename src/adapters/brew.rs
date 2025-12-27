@@ -67,6 +67,7 @@ impl PackageManager for Brew {
                 | Operation::Info
                 | Operation::Clean
                 | Operation::Check
+                | Operation::Owns
         )
     }
 
@@ -267,6 +268,52 @@ impl PackageManager for Brew {
             pm: "brew".to_string(),
             op: "autoremove".to_string(),
         })
+    }
+
+    fn owns(&self, file_or_command: &str, options: &OperationOptions) -> Result<String> {
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
+
+        let path = if std::path::Path::new(file_or_command).exists() {
+            file_or_command.to_string()
+        } else {
+            let mut which_cmd = Command::new("which");
+            which_cmd.arg(file_or_command);
+            match executor.execute_capture(which_cmd) {
+                Ok(output) => {
+                    let resolved = output.trim().to_string();
+                    if resolved.is_empty() {
+                        return Err(PacMagicError::ExecutionError(format!(
+                            "Command '{}' not found in PATH",
+                            file_or_command
+                        )));
+                    }
+                    resolved
+                }
+                Err(_) => {
+                    return Err(PacMagicError::ExecutionError(format!(
+                        "File or command '{}' not found",
+                        file_or_command
+                    )));
+                }
+            }
+        };
+
+        let installed = self.list_installed(options)?;
+        let path_buf = std::path::PathBuf::from(&path);
+
+        for pkg in installed {
+            let files = self.files(&pkg.name, options)?;
+            for file in files {
+                if std::path::Path::new(&file) == path_buf.as_path() {
+                    return Ok(pkg.name);
+                }
+            }
+        }
+
+        Err(PacMagicError::ExecutionError(
+            "No package found for the given file or command".to_string(),
+        ))
     }
 }
 

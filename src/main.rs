@@ -121,6 +121,12 @@ enum Commands {
         #[arg(short, long)]
         force: bool,
     },
+
+    /// Find which package owns a file or command
+    Owns {
+        /// File path or command name
+        file_or_command: String,
+    },
 }
 
 fn main() {
@@ -329,6 +335,10 @@ fn run(cli: Cli, default_command_used: bool) -> pacmagic::Result<()> {
             config.save()?;
             println!("Configuration file created at: {}", config_path.display());
             println!("Edit this file to customize PacMagic behavior.");
+        }
+
+        Commands::Owns { file_or_command } => {
+            pm.execute(Operation::Owns, &[&file_or_command], &options)?;
         }
     }
 
