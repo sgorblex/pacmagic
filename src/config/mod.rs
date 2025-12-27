@@ -1,4 +1,4 @@
-use crate::core::{InstallBehavior, Operation, PacMagicError, Result};
+use crate::core::{InstallBehavior, InstallPreUpdateBehavior, Operation, PacMagicError, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -108,6 +108,10 @@ pub struct GeneralConfig {
     #[serde(default = "default_install_behavior")]
     pub install_behavior: InstallBehavior,
 
+    /// Default behavior for update/upgrade before installing packages
+    #[serde(default = "default_install_pre_update_behavior")]
+    pub install_pre_update_behavior: InstallPreUpdateBehavior,
+
     /// Default command to run when pacmagic is invoked without arguments
     #[serde(default)]
     pub default_command: Option<String>,
@@ -143,6 +147,10 @@ fn default_install_behavior() -> InstallBehavior {
     InstallBehavior::Default
 }
 
+fn default_install_pre_update_behavior() -> InstallPreUpdateBehavior {
+    InstallPreUpdateBehavior::Default
+}
+
 impl Default for GeneralConfig {
     fn default() -> Self {
         Self {
@@ -151,6 +159,7 @@ impl Default for GeneralConfig {
             verbose: false,
             use_sudo: true,
             install_behavior: default_install_behavior(),
+            install_pre_update_behavior: default_install_pre_update_behavior(),
             default_command: None,
         }
     }

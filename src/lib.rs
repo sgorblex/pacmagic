@@ -6,7 +6,8 @@ pub mod platform;
 pub use adapters::AdapterRegistry;
 pub use config::Config;
 pub use core::{
-    InstallBehavior, Operation, OperationOptions, PacMagicError, Package, PackageManager, Result,
+    InstallBehavior, InstallPreUpdateBehavior, Operation, OperationOptions, PacMagicError, Package,
+    PackageManager, Result,
 };
 pub use platform::PlatformDetector;
 
@@ -61,6 +62,132 @@ impl PacMagic {
         self.registry.auto_detect()
     }
 
+    /// Handle pre-update/upgrade behavior before installing packages
+    fn handle_install_pre_update(
+        &self,
+        _packages: &[&str],
+        options: &OperationOptions,
+        pm: &dyn PackageManager,
+    ) -> Result<()> {
+        use InstallPreUpdateBehavior::*;
+        let behavior = self.config.general.install_pre_update_behavior;
+
+        let effective_behavior = match behavior {
+            Default => {
+                if PlatformDetector::is_rolling_release() {
+                    UpdateAndUpgrade
+                } else {
+                    None
+                }
+            }
+            other => other,
+        };
+
+        match effective_behavior {
+            UpdateAndUpgrade => {
+                pm.update(options)?;
+                pm.upgrade_all(options)?;
+            }
+            UpdateOnly => {
+                pm.update(options)?;
+            }
+            UpdateAndAsk => {
+                pm.update(options)?;
+                let upgrade_count = self.get_upgrade_count(pm, options).unwrap_or(0);
+                if upgrade_count > 0 && self.prompt_upgrade(upgrade_count, options)? {
+                    pm.upgrade_all(options)?;
+                }
+            }
+            None => {}
+            Default => {}
+        }
+
+        Ok(())
+    }
+
+    /// Get the number of packages that can be upgraded
+    fn get_upgrade_count(
+        &self,
+        pm: &dyn PackageManager,
+        options: &OperationOptions,
+    ) -> Result<usize> {
+        let pm_name = pm.name();
+        let executor =
+            core::CommandExecutor::new(options.dry_run, options.verbose).with_show_commands(false);
+
+        let count = match pm_name {
+            "pacman" => if options.use_sudo {
+                let mut sudo_cmd = std::process::Command::new("sudo");
+                sudo_cmd.arg("pacman");
+                sudo_cmd.arg("-Qu");
+                executor.execute_capture(sudo_cmd).ok()
+            } else {
+                let mut cmd = std::process::Command::new("pacman");
+                cmd.arg("-Qu");
+                executor.execute_capture(cmd).ok()
+            }
+            .map(|output| output.lines().count())
+            .unwrap_or(0),
+            "paru" => {
+                let mut cmd = std::process::Command::new("paru");
+                cmd.arg("-Qu");
+                executor
+                    .execute_capture(cmd)
+                    .ok()
+                    .map(|output| output.lines().count())
+                    .unwrap_or(0)
+            }
+            "apt" => {
+                let mut cmd = std::process::Command::new("apt");
+                cmd.arg("list");
+                cmd.arg("--upgradable");
+                executor
+                    .execute_capture(cmd)
+                    .ok()
+                    .map(|output| {
+                        output
+                            .lines()
+                            .filter(|line| line.contains("/") && !line.starts_with("Listing"))
+                            .count()
+                            .saturating_sub(1)
+                    })
+                    .unwrap_or(0)
+            }
+            _ => {
+                return Ok(0);
+            }
+        };
+
+        Ok(count)
+    }
+
+    /// Prompt the user about upgrading packages
+    fn prompt_upgrade(&self, upgrade_count: usize, options: &OperationOptions) -> Result<bool> {
+        if options.no_confirm {
+            return Ok(false);
+        }
+
+        if options.dry_run {
+            println!(
+                "[dry run] Would prompt: Upgrade {} package(s)?",
+                upgrade_count
+            );
+            return Ok(false);
+        }
+
+        print!(
+            "{} package(s) can be upgraded. Upgrade now? [y/N]: ",
+            upgrade_count
+        );
+        use std::io::{self, Write};
+        io::stdout().flush()?;
+
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
+
+        Ok(input.trim().to_lowercase() == "y" || input.trim().to_lowercase() == "yes")
+    }
+
     /// Execute an operation with the detected package manager
     pub fn execute(
         &self,
@@ -83,7 +210,10 @@ impl PacMagic {
         }
 
         match operation {
-            Operation::Install => pm.install(packages, &options),
+            Operation::Install => {
+                self.handle_install_pre_update(packages, &options, &*pm)?;
+                pm.install(packages, &options)
+            }
             Operation::Remove => pm.remove(packages, &options),
             Operation::Update => pm.update(&options),
             Operation::Upgrade => pm.upgrade(packages, &options),

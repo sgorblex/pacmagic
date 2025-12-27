@@ -55,6 +55,61 @@ impl FromStr for InstallBehavior {
     }
 }
 
+/// Behavior for update/upgrade before installing packages
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum InstallPreUpdateBehavior {
+    /// Update and upgrade everything first
+    #[serde(alias = "update-and-upgrade")]
+    UpdateAndUpgrade,
+
+    /// Update first, but do not upgrade
+    #[serde(alias = "update-only")]
+    UpdateOnly,
+
+    /// Update first, ask if upgrade (only if there are upgrades, and show how many)
+    #[serde(alias = "update-and-ask")]
+    UpdateAndAsk,
+
+    /// Just install (the user manually decides to run update and/or upgrade first)
+    #[serde(alias = "none")]
+    None,
+
+    /// Default: Update and upgrade everything first, but only on rolling releases such as Arch
+    #[serde(alias = "default")]
+    Default,
+}
+
+impl fmt::Display for InstallPreUpdateBehavior {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            InstallPreUpdateBehavior::UpdateAndUpgrade => "update-and-upgrade",
+            InstallPreUpdateBehavior::UpdateOnly => "update-only",
+            InstallPreUpdateBehavior::UpdateAndAsk => "update-and-ask",
+            InstallPreUpdateBehavior::None => "none",
+            InstallPreUpdateBehavior::Default => "default",
+        };
+        write!(f, "{}", s)
+    }
+}
+
+impl FromStr for InstallPreUpdateBehavior {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "update-and-upgrade" | "update_and_upgrade" => {
+                Ok(InstallPreUpdateBehavior::UpdateAndUpgrade)
+            }
+            "update-only" | "update_only" => Ok(InstallPreUpdateBehavior::UpdateOnly),
+            "update-and-ask" | "update_and_ask" => Ok(InstallPreUpdateBehavior::UpdateAndAsk),
+            "none" => Ok(InstallPreUpdateBehavior::None),
+            "default" => Ok(InstallPreUpdateBehavior::Default),
+            _ => Err(format!("Unknown install pre-update behavior: {}", s)),
+        }
+    }
+}
+
 /// Core package management operations
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Operation {

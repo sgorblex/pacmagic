@@ -23,6 +23,15 @@ use_sudo = true
 # - abort: Abort with error if package is already installed
 install_behavior = "default"
 
+# Default behavior for update/upgrade before installing packages
+# Options: "default", "update-and-upgrade", "update-only", "update-and-ask", "none"
+# - default: Update and upgrade everything first, but only on rolling releases (e.g., Arch)
+# - update-and-upgrade: Always update and upgrade everything first
+# - update-only: Update package database first, but do not upgrade
+# - update-and-ask: Update first, then ask if upgrade (only if there are upgrades, shows count)
+# - none: Just install (user manually decides to run update/upgrade first)
+install_pre_update_behavior = "default"
+
 # Default command to run when pacmagic is invoked without arguments
 # Set to an alias name (e.g., "full-upgrade") or an operation name
 # If not set, pacmagic will show an error when run without arguments
