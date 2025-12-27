@@ -79,3 +79,131 @@ impl Package {
         self
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_package_new() {
+        let package = Package::new("nginx".to_string(), "apt".to_string());
+        assert_eq!(package.name, "nginx");
+        assert_eq!(package.manager, "apt");
+        assert_eq!(package.version, None);
+        assert_eq!(package.description, None);
+        assert!(!package.installed);
+        assert_eq!(package.repository, None);
+    }
+
+    #[test]
+    fn test_package_with_version() {
+        let package =
+            Package::new("nginx".to_string(), "apt".to_string()).with_version("1.18.0".to_string());
+        assert_eq!(package.version, Some("1.18.0".to_string()));
+    }
+
+    #[test]
+    fn test_package_with_description() {
+        let package = Package::new("nginx".to_string(), "apt".to_string())
+            .with_description("Web server".to_string());
+        assert_eq!(package.description, Some("Web server".to_string()));
+    }
+
+    #[test]
+    fn test_package_with_installed() {
+        let package = Package::new("nginx".to_string(), "apt".to_string()).with_installed(true);
+        assert!(package.installed);
+        let package = Package::new("nginx".to_string(), "apt".to_string()).with_installed(false);
+        assert!(!package.installed);
+    }
+
+    #[test]
+    fn test_package_with_repository() {
+        let package = Package::new("nginx".to_string(), "apt".to_string())
+            .with_repository("main".to_string());
+        assert_eq!(package.repository, Some("main".to_string()));
+    }
+
+    #[test]
+    fn test_package_builder_chaining() {
+        let package = Package::new("nginx".to_string(), "apt".to_string())
+            .with_version("1.18.0".to_string())
+            .with_description("Web server".to_string())
+            .with_installed(true)
+            .with_repository("main".to_string());
+
+        assert_eq!(package.name, "nginx");
+        assert_eq!(package.manager, "apt");
+        assert_eq!(package.version, Some("1.18.0".to_string()));
+        assert_eq!(package.description, Some("Web server".to_string()));
+        assert!(package.installed);
+        assert_eq!(package.repository, Some("main".to_string()));
+    }
+
+    #[test]
+    fn test_package_equality() {
+        let p1 =
+            Package::new("nginx".to_string(), "apt".to_string()).with_version("1.18.0".to_string());
+        let p2 =
+            Package::new("nginx".to_string(), "apt".to_string()).with_version("1.18.0".to_string());
+        assert_eq!(p1, p2);
+    }
+
+    #[test]
+    fn test_package_inequality() {
+        let p1 = Package::new("nginx".to_string(), "apt".to_string());
+        let p2 = Package::new("apache".to_string(), "apt".to_string());
+        assert_ne!(p1, p2);
+    }
+
+    #[test]
+    fn test_package_clone() {
+        let p1 = Package::new("nginx".to_string(), "apt".to_string())
+            .with_version("1.18.0".to_string())
+            .with_installed(true);
+        let p2 = p1.clone();
+        assert_eq!(p1, p2);
+    }
+
+    #[test]
+    fn test_package_metadata_default() {
+        let metadata = PackageMetadata::default();
+        assert_eq!(metadata.size, None);
+        assert_eq!(metadata.architecture, None);
+        assert_eq!(metadata.maintainer, None);
+        assert_eq!(metadata.homepage, None);
+        assert_eq!(metadata.license, None);
+        assert!(metadata.dependencies.is_empty());
+    }
+
+    #[test]
+    fn test_package_metadata_equality() {
+        let m1 = PackageMetadata::default();
+        let m2 = PackageMetadata::default();
+        assert_eq!(m1, m2);
+    }
+
+    #[test]
+    fn test_package_serde() {
+        let package = Package::new("nginx".to_string(), "apt".to_string())
+            .with_version("1.18.0".to_string())
+            .with_description("Web server".to_string())
+            .with_installed(true);
+
+        let json = serde_json::to_string(&package).unwrap();
+        let parsed: Package = serde_json::from_str(&json).unwrap();
+        assert_eq!(package, parsed);
+    }
+
+    #[test]
+    fn test_package_metadata_serde() {
+        let mut metadata = PackageMetadata::default();
+        metadata.size = Some(1024);
+        metadata.architecture = Some("amd64".to_string());
+        metadata.dependencies = vec!["libc6".to_string()];
+
+        let json = serde_json::to_string(&metadata).unwrap();
+        let parsed: PackageMetadata = serde_json::from_str(&json).unwrap();
+        assert_eq!(metadata, parsed);
+    }
+}

@@ -145,4 +145,85 @@ mod tests {
         #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
         assert!(pm.is_some());
     }
+
+    #[test]
+    fn test_operating_system_variants() {
+        let os = PlatformDetector::detect_os();
+        match os {
+            OperatingSystem::Linux
+            | OperatingSystem::MacOS
+            | OperatingSystem::Windows
+            | OperatingSystem::FreeBSD
+            | OperatingSystem::Unknown => {}
+        }
+        assert_ne!(os, OperatingSystem::Unknown);
+    }
+
+    #[test]
+    fn test_operating_system_equality() {
+        let os1 = OperatingSystem::Linux;
+        let os2 = OperatingSystem::Linux;
+        let os3 = OperatingSystem::MacOS;
+        assert_eq!(os1, os2);
+        assert_ne!(os1, os3);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_linux_distribution_variants() {
+        let distro = PlatformDetector::detect_linux_distro();
+        match distro {
+            LinuxDistribution::Arch
+            | LinuxDistribution::Debian
+            | LinuxDistribution::Ubuntu
+            | LinuxDistribution::PopOS
+            | LinuxDistribution::Fedora
+            | LinuxDistribution::RedHat
+            | LinuxDistribution::OpenSUSE
+            | LinuxDistribution::Alpine
+            | LinuxDistribution::Gentoo
+            | LinuxDistribution::Unknown => {}
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_linux_distribution_equality() {
+        let distro1 = LinuxDistribution::Arch;
+        let distro2 = LinuxDistribution::Arch;
+        let distro3 = LinuxDistribution::Debian;
+        assert_eq!(distro1, distro2);
+        assert_ne!(distro1, distro3);
+    }
+
+    #[test]
+    fn test_recommended_package_manager_consistency() {
+        let os = PlatformDetector::detect_os();
+        let pm = PlatformDetector::recommended_package_manager();
+
+        match os {
+            OperatingSystem::MacOS => assert_eq!(pm, Some("brew")),
+            OperatingSystem::Windows => assert_eq!(pm, Some("winget")),
+            OperatingSystem::FreeBSD => assert_eq!(pm, Some("pkg")),
+            OperatingSystem::Linux => {
+                #[cfg(target_os = "linux")]
+                {
+                    let distro = PlatformDetector::detect_linux_distro();
+                    match distro {
+                        LinuxDistribution::Arch => assert_eq!(pm, Some("pacman")),
+                        LinuxDistribution::Debian
+                        | LinuxDistribution::Ubuntu
+                        | LinuxDistribution::PopOS => assert_eq!(pm, Some("apt")),
+                        LinuxDistribution::Fedora => assert_eq!(pm, Some("dnf")),
+                        LinuxDistribution::RedHat => assert_eq!(pm, Some("yum")),
+                        LinuxDistribution::OpenSUSE => assert_eq!(pm, Some("zypper")),
+                        LinuxDistribution::Alpine => assert_eq!(pm, Some("apk")),
+                        LinuxDistribution::Gentoo => assert_eq!(pm, Some("emerge")),
+                        LinuxDistribution::Unknown => assert_eq!(pm, None),
+                    }
+                }
+            }
+            OperatingSystem::Unknown => assert_eq!(pm, None),
+        }
+    }
 }

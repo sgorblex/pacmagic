@@ -400,4 +400,210 @@ mod tests {
             assert_eq!(config.resolve_alias("s"), Some(Operation::Search));
         }
     }
+
+    #[test]
+    fn test_general_config_default() {
+        let config = GeneralConfig::default();
+        assert_eq!(config.default_package_manager, "auto");
+        assert!(config.confirm_before_install);
+        assert!(!config.verbose);
+        assert!(config.use_sudo);
+        assert_eq!(config.install_behavior, InstallBehavior::Default);
+        assert_eq!(config.default_command, None);
+    }
+
+    #[test]
+    fn test_package_manager_config_default() {
+        let config = PackageManagerConfig::default();
+        assert!(config.enabled);
+        assert_eq!(config.use_sudo, None);
+        assert!(config.extra_flags.is_empty());
+        assert!(config.extra.is_empty());
+    }
+
+    #[test]
+    fn test_config_get_package_manager_config() {
+        let mut config = Config::default();
+        let mut pm_config = PackageManagerConfig::default();
+        pm_config.enabled = false;
+        pm_config.extra_flags = vec!["--test".to_string()];
+        config
+            .package_managers
+            .insert("apt".to_string(), pm_config.clone());
+
+        let retrieved = config.get_package_manager_config("apt");
+        assert_eq!(retrieved.enabled, false);
+        assert_eq!(retrieved.extra_flags, vec!["--test".to_string()]);
+
+        let default = config.get_package_manager_config("nonexistent");
+        assert!(default.enabled);
+        assert!(default.extra_flags.is_empty());
+    }
+
+    #[test]
+    fn test_config_alias_value_single() {
+        let value = AliasValue::Single("install".to_string());
+        match value {
+            AliasValue::Single(s) => assert_eq!(s, "install"),
+            _ => panic!("Expected Single"),
+        }
+    }
+
+    #[test]
+    fn test_config_alias_value_multiple() {
+        let value = AliasValue::Multiple(vec!["update".to_string(), "upgrade".to_string()]);
+        match value {
+            AliasValue::Multiple(v) => {
+                assert_eq!(v.len(), 2);
+                assert_eq!(v[0], "update");
+                assert_eq!(v[1], "upgrade");
+            }
+            _ => panic!("Expected Multiple"),
+        }
+    }
+
+    #[test]
+    fn test_config_resolve_alias_sequence_single() {
+        let config = Config::default();
+        let ops = config.resolve_alias_sequence("install");
+        assert_eq!(ops, Some(vec![Operation::Install]));
+    }
+
+    #[test]
+    fn test_config_resolve_alias_sequence_multiple() {
+        let mut config = Config::default();
+        config.aliases.insert(
+            "sync".to_string(),
+            AliasValue::Multiple(vec!["update".to_string(), "upgrade-all".to_string()]),
+        );
+        let ops = config.resolve_alias_sequence("sync");
+        assert!(ops.is_some());
+        let ops = ops.unwrap();
+        assert_eq!(ops.len(), 2);
+        assert_eq!(ops[0], Operation::Update);
+        assert_eq!(ops[1], Operation::UpgradeAll);
+    }
+
+    #[test]
+    fn test_config_resolve_alias_sequence_invalid_operation() {
+        let mut config = Config::default();
+        config.aliases.insert(
+            "invalid".to_string(),
+            AliasValue::Multiple(vec!["update".to_string(), "invalid-op".to_string()]),
+        );
+        let ops = config.resolve_alias_sequence("invalid");
+        assert!(ops.is_none());
+    }
+
+    #[test]
+    fn test_config_resolve_alias_sequence_nonexistent() {
+        let config = Config::default();
+        assert_eq!(config.resolve_alias_sequence("nonexistent"), None);
+    }
+
+    #[test]
+    fn test_config_serialization_roundtrip() {
+        let mut config = Config::default();
+        config.general.default_package_manager = "pacman".to_string();
+        config.general.verbose = true;
+        config.general.confirm_before_install = false;
+
+        let toml = toml::to_string(&config).unwrap();
+        let parsed: Config = toml::from_str(&toml).unwrap();
+
+        assert_eq!(parsed.general.default_package_manager, "pacman");
+        assert_eq!(parsed.general.verbose, true);
+        assert_eq!(parsed.general.confirm_before_install, false);
+    }
+
+    #[test]
+    fn test_config_package_manager_config_serialization() {
+        let mut pm_config = PackageManagerConfig::default();
+        pm_config.enabled = false;
+        pm_config.use_sudo = Some(false);
+        pm_config.extra_flags = vec!["--flag1".to_string(), "--flag2".to_string()];
+        pm_config.extra.insert(
+            "custom".to_string(),
+            toml::Value::String("value".to_string()),
+        );
+
+        let toml = toml::to_string(&pm_config).unwrap();
+        let parsed: PackageManagerConfig = toml::from_str(&toml).unwrap();
+
+        assert_eq!(parsed.enabled, false);
+        assert_eq!(parsed.use_sudo, Some(false));
+        assert_eq!(parsed.extra_flags.len(), 2);
+        assert_eq!(parsed.extra.get("custom").unwrap().as_str(), Some("value"));
+    }
+
+    #[test]
+    fn test_config_alias_serialization_single() {
+        let mut config = Config::default();
+        config.aliases.insert(
+            "custom-install".to_string(),
+            AliasValue::Single("install".to_string()),
+        );
+
+        let toml = toml::to_string(&config).unwrap();
+        let parsed: Config = toml::from_str(&toml).unwrap();
+
+        assert_eq!(
+            parsed.resolve_alias("custom-install"),
+            Some(Operation::Install)
+        );
+    }
+
+    #[test]
+    fn test_config_alias_serialization_multiple() {
+        let mut config = Config::default();
+        config.aliases.insert(
+            "sync".to_string(),
+            AliasValue::Multiple(vec!["update".to_string(), "upgrade-all".to_string()]),
+        );
+
+        let toml = toml::to_string(&config).unwrap();
+        let parsed: Config = toml::from_str(&toml).unwrap();
+
+        let ops = parsed.resolve_alias_sequence("sync");
+        assert!(ops.is_some());
+        let ops = ops.unwrap();
+        assert_eq!(ops.len(), 2);
+    }
+
+    #[test]
+    fn test_config_default_aliases_populated() {
+        let config = Config::default();
+        assert!(config.aliases.contains_key("install"));
+        assert!(config.aliases.contains_key("i"));
+        assert!(config.aliases.contains_key("remove"));
+        assert!(config.aliases.contains_key("rm"));
+        assert!(config.aliases.contains_key("search"));
+        assert!(config.aliases.contains_key("s"));
+    }
+
+    #[test]
+    fn test_config_load_from_nonexistent_returns_default() {
+        use std::path::PathBuf;
+        let path = PathBuf::from("/nonexistent/path/config.toml");
+        let config = Config::load_from(&path);
+        assert!(config.is_err());
+    }
+
+    #[test]
+    fn test_config_save_and_load_roundtrip() {
+        use tempfile::TempDir;
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("config.toml");
+
+        let mut config = Config::default();
+        config.general.default_package_manager = "apt".to_string();
+        config.general.verbose = true;
+
+        config.save_to(&config_path).unwrap();
+        assert!(config_path.exists());
+
+        let loaded = Config::load_from(&config_path).unwrap();
+        assert_eq!(loaded.general.default_package_manager, "apt");
+        assert_eq!(loaded.general.verbose, true);
+    }
 }

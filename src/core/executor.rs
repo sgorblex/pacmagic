@@ -164,3 +164,127 @@ impl Default for CommandExecutor {
         Self::new(false, false)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_command_executor_new() {
+        let executor = CommandExecutor::new(false, false);
+        assert!(!executor.dry_run);
+        assert!(!executor.verbose);
+        assert!(!executor.show_commands);
+    }
+
+    #[test]
+    fn test_command_executor_with_dry_run() {
+        let executor = CommandExecutor::new(true, false);
+        assert!(executor.dry_run);
+    }
+
+    #[test]
+    fn test_command_executor_with_verbose() {
+        let executor = CommandExecutor::new(false, true);
+        assert!(executor.verbose);
+    }
+
+    #[test]
+    fn test_command_executor_with_show_commands() {
+        let executor = CommandExecutor::new(false, false).with_show_commands(true);
+        assert!(executor.show_commands);
+    }
+
+    #[test]
+    fn test_command_executor_default() {
+        let executor = CommandExecutor::default();
+        assert!(!executor.dry_run);
+        assert!(!executor.verbose);
+    }
+
+    #[test]
+    fn test_command_executor_dry_run() {
+        let executor = CommandExecutor::new(true, false);
+        let mut cmd = Command::new("echo");
+        cmd.arg("test");
+        let output = executor.execute(cmd).unwrap();
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(stdout.contains("dry run"));
+    }
+
+    #[test]
+    fn test_command_executor_execute_success() {
+        let executor = CommandExecutor::new(false, false);
+        let mut cmd = Command::new("echo");
+        cmd.arg("test");
+        let output = executor.execute(cmd).unwrap();
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(stdout.trim() == "test");
+    }
+
+    #[test]
+    fn test_command_executor_execute_checked() {
+        let executor = CommandExecutor::new(false, false);
+        let cmd = Command::new("true");
+        assert!(executor.execute_checked(cmd).is_ok());
+    }
+
+    #[test]
+    fn test_command_executor_execute_checked_failure() {
+        let executor = CommandExecutor::new(false, false);
+        let cmd = Command::new("false");
+        assert!(executor.execute_checked(cmd).is_err());
+    }
+
+    #[test]
+    fn test_command_executor_execute_capture() {
+        let executor = CommandExecutor::new(false, false);
+        let mut cmd = Command::new("echo");
+        cmd.arg("hello world");
+        let output = executor.execute_capture(cmd).unwrap();
+        assert_eq!(output.trim(), "hello world");
+    }
+
+    #[test]
+    fn test_command_executor_execute_interactive_dry_run() {
+        let executor = CommandExecutor::new(true, false);
+        let mut cmd = Command::new("echo");
+        cmd.arg("test");
+        assert!(executor.execute_interactive(cmd).is_ok());
+    }
+
+    #[test]
+    fn test_command_executor_format_command() {
+        let executor = CommandExecutor::new(false, false);
+        let mut cmd = Command::new("echo");
+        cmd.arg("test");
+        cmd.arg("hello");
+        let formatted = executor.format_command(&cmd);
+        assert!(formatted.contains("echo"));
+        assert!(formatted.contains("test"));
+        assert!(formatted.contains("hello"));
+    }
+
+    #[test]
+    fn test_command_executor_execute_nonexistent_command() {
+        let executor = CommandExecutor::new(false, false);
+        let cmd = Command::new("nonexistent_command_xyz123");
+        assert!(executor.execute(cmd).is_err());
+    }
+
+    #[test]
+    fn test_command_executor_execute_capture_empty_output() {
+        let executor = CommandExecutor::new(false, false);
+        let cmd = Command::new("true");
+        let output = executor.execute_capture(cmd).unwrap();
+        assert!(output.trim().is_empty());
+    }
+
+    #[test]
+    fn test_command_executor_builder_chaining() {
+        let executor = CommandExecutor::new(true, true).with_show_commands(true);
+        assert!(executor.dry_run);
+        assert!(executor.verbose);
+        assert!(executor.show_commands);
+    }
+}

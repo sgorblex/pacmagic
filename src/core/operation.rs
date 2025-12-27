@@ -269,25 +269,376 @@ impl OperationOptions {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_operation_options_extra_flags() {
-        let options = OperationOptions::new()
-            .with_extra_flags(vec!["--test-flag".to_string(), "-v".to_string()]);
+    mod install_behavior_tests {
+        use super::*;
 
-        assert_eq!(options.extra_flags.len(), 2);
-        assert_eq!(options.extra_flags[0], "--test-flag");
-        assert_eq!(options.extra_flags[1], "-v");
+        #[test]
+        fn test_install_behavior_display() {
+            assert_eq!(InstallBehavior::Default.to_string(), "default");
+            assert_eq!(InstallBehavior::Upgrade.to_string(), "upgrade");
+            assert_eq!(InstallBehavior::Reinstall.to_string(), "reinstall");
+            assert_eq!(InstallBehavior::Skip.to_string(), "skip");
+        }
+
+        #[test]
+        fn test_install_behavior_from_str() {
+            assert_eq!(
+                InstallBehavior::from_str("default").unwrap(),
+                InstallBehavior::Default
+            );
+            assert_eq!(
+                InstallBehavior::from_str("upgrade").unwrap(),
+                InstallBehavior::Upgrade
+            );
+            assert_eq!(
+                InstallBehavior::from_str("reinstall").unwrap(),
+                InstallBehavior::Reinstall
+            );
+            assert_eq!(
+                InstallBehavior::from_str("skip").unwrap(),
+                InstallBehavior::Skip
+            );
+        }
+
+        #[test]
+        fn test_install_behavior_from_str_case_insensitive() {
+            assert_eq!(
+                InstallBehavior::from_str("DEFAULT").unwrap(),
+                InstallBehavior::Default
+            );
+            assert_eq!(
+                InstallBehavior::from_str("Upgrade").unwrap(),
+                InstallBehavior::Upgrade
+            );
+            assert_eq!(
+                InstallBehavior::from_str("REINSTALL").unwrap(),
+                InstallBehavior::Reinstall
+            );
+            assert_eq!(
+                InstallBehavior::from_str("Skip").unwrap(),
+                InstallBehavior::Skip
+            );
+        }
+
+        #[test]
+        fn test_install_behavior_from_str_invalid() {
+            assert!(InstallBehavior::from_str("invalid").is_err());
+            assert!(InstallBehavior::from_str("").is_err());
+            assert!(InstallBehavior::from_str("upgrade-all").is_err());
+        }
+
+        #[test]
+        fn test_install_behavior_serde() {
+            let json = serde_json::to_string(&InstallBehavior::Default).unwrap();
+            assert_eq!(json, "\"default\"");
+            let parsed: InstallBehavior = serde_json::from_str(&json).unwrap();
+            assert_eq!(parsed, InstallBehavior::Default);
+        }
+
+        #[test]
+        fn test_install_behavior_serde_all_variants() {
+            for behavior in [
+                InstallBehavior::Default,
+                InstallBehavior::Upgrade,
+                InstallBehavior::Reinstall,
+                InstallBehavior::Skip,
+            ] {
+                let json = serde_json::to_string(&behavior).unwrap();
+                let parsed: InstallBehavior = serde_json::from_str(&json).unwrap();
+                assert_eq!(parsed, behavior);
+            }
+        }
+
+        #[test]
+        fn test_install_behavior_serde_alias() {
+            let json = r#""default""#;
+            let parsed: InstallBehavior = serde_json::from_str(json).unwrap();
+            assert_eq!(parsed, InstallBehavior::Default);
+        }
     }
 
-    #[test]
-    fn test_operation_options_append_extra_flags() {
-        let options = OperationOptions::new()
-            .append_extra_flags(&["--flag1".to_string()])
-            .append_extra_flags(&["--flag2".to_string(), "--flag3".to_string()]);
+    mod operation_tests {
+        use super::*;
 
-        assert_eq!(options.extra_flags.len(), 3);
-        assert_eq!(options.extra_flags[0], "--flag1");
-        assert_eq!(options.extra_flags[1], "--flag2");
-        assert_eq!(options.extra_flags[2], "--flag3");
+        #[test]
+        fn test_operation_all() {
+            let all_ops = Operation::all();
+            assert_eq!(all_ops.len(), 13);
+            assert!(all_ops.contains(&Operation::Install));
+            assert!(all_ops.contains(&Operation::Remove));
+            assert!(all_ops.contains(&Operation::Update));
+            assert!(all_ops.contains(&Operation::Upgrade));
+            assert!(all_ops.contains(&Operation::UpgradeAll));
+            assert!(all_ops.contains(&Operation::Search));
+            assert!(all_ops.contains(&Operation::List));
+            assert!(all_ops.contains(&Operation::Info));
+            assert!(all_ops.contains(&Operation::Clean));
+            assert!(all_ops.contains(&Operation::Files));
+            assert!(all_ops.contains(&Operation::Check));
+            assert!(all_ops.contains(&Operation::Autoremove));
+            assert!(all_ops.contains(&Operation::Owns));
+        }
+
+        #[test]
+        fn test_operation_default_aliases() {
+            assert_eq!(
+                Operation::Install.default_aliases(),
+                &["install", "i", "add"]
+            );
+            assert_eq!(
+                Operation::Remove.default_aliases(),
+                &["remove", "rm", "uninstall"]
+            );
+            assert_eq!(Operation::Update.default_aliases(), &["update", "up"]);
+            assert_eq!(Operation::Upgrade.default_aliases(), &["upgrade", "upg"]);
+            assert_eq!(
+                Operation::UpgradeAll.default_aliases(),
+                &["upgrade-all", "full-upgrade"]
+            );
+            assert_eq!(
+                Operation::Search.default_aliases(),
+                &["search", "s", "find"]
+            );
+            assert_eq!(Operation::List.default_aliases(), &["list", "ls"]);
+            assert_eq!(Operation::Info.default_aliases(), &["info", "show"]);
+            assert_eq!(Operation::Clean.default_aliases(), &["clean", "cleanup"]);
+            assert_eq!(Operation::Files.default_aliases(), &["files", "ls-files"]);
+            assert_eq!(Operation::Check.default_aliases(), &["check", "verify"]);
+            assert_eq!(
+                Operation::Autoremove.default_aliases(),
+                &["autoremove", "auto-remove"]
+            );
+            assert_eq!(
+                Operation::Owns.default_aliases(),
+                &["owns", "owner", "which-package"]
+            );
+        }
+
+        #[test]
+        fn test_operation_try_from_str() {
+            assert_eq!(Operation::try_from_str("install"), Some(Operation::Install));
+            assert_eq!(Operation::try_from_str("i"), Some(Operation::Install));
+            assert_eq!(Operation::try_from_str("add"), Some(Operation::Install));
+            assert_eq!(Operation::try_from_str("remove"), Some(Operation::Remove));
+            assert_eq!(Operation::try_from_str("rm"), Some(Operation::Remove));
+            assert_eq!(Operation::try_from_str("search"), Some(Operation::Search));
+            assert_eq!(Operation::try_from_str("s"), Some(Operation::Search));
+            assert_eq!(Operation::try_from_str("find"), Some(Operation::Search));
+            assert_eq!(Operation::try_from_str("update"), Some(Operation::Update));
+            assert_eq!(Operation::try_from_str("up"), Some(Operation::Update));
+            assert_eq!(
+                Operation::try_from_str("upgrade-all"),
+                Some(Operation::UpgradeAll)
+            );
+            assert_eq!(
+                Operation::try_from_str("full-upgrade"),
+                Some(Operation::UpgradeAll)
+            );
+        }
+
+        #[test]
+        fn test_operation_try_from_str_invalid() {
+            assert_eq!(Operation::try_from_str("invalid"), None);
+            assert_eq!(Operation::try_from_str(""), None);
+            assert_eq!(Operation::try_from_str("instal"), None);
+        }
+
+        #[test]
+        fn test_operation_from_str() {
+            assert_eq!(Operation::from_str("install").unwrap(), Operation::Install);
+            assert_eq!(Operation::from_str("i").unwrap(), Operation::Install);
+            assert_eq!(Operation::from_str("remove").unwrap(), Operation::Remove);
+        }
+
+        #[test]
+        fn test_operation_from_str_error() {
+            assert!(Operation::from_str("invalid").is_err());
+            assert!(Operation::from_str("").is_err());
+        }
+
+        #[test]
+        fn test_operation_display() {
+            assert_eq!(Operation::Install.to_string(), "install");
+            assert_eq!(Operation::Remove.to_string(), "remove");
+            assert_eq!(Operation::Update.to_string(), "update");
+            assert_eq!(Operation::Upgrade.to_string(), "upgrade");
+            assert_eq!(Operation::UpgradeAll.to_string(), "upgrade-all");
+            assert_eq!(Operation::Search.to_string(), "search");
+            assert_eq!(Operation::List.to_string(), "list");
+            assert_eq!(Operation::Info.to_string(), "info");
+            assert_eq!(Operation::Clean.to_string(), "clean");
+            assert_eq!(Operation::Files.to_string(), "files");
+            assert_eq!(Operation::Check.to_string(), "check");
+            assert_eq!(Operation::Autoremove.to_string(), "autoremove");
+            assert_eq!(Operation::Owns.to_string(), "owns");
+        }
+
+        #[test]
+        fn test_operation_serde() {
+            let json = serde_json::to_string(&Operation::Install).unwrap();
+            assert_eq!(json, "\"Install\"");
+            let parsed: Operation = serde_json::from_str(&json).unwrap();
+            assert_eq!(parsed, Operation::Install);
+        }
+
+        #[test]
+        fn test_operation_serde_all_variants() {
+            for op in Operation::all() {
+                let json = serde_json::to_string(op).unwrap();
+                let parsed: Operation = serde_json::from_str(&json).unwrap();
+                assert_eq!(*op, parsed);
+            }
+        }
+
+        #[test]
+        fn test_operation_hash_eq() {
+            use std::collections::HashSet;
+            let mut set = HashSet::new();
+            set.insert(Operation::Install);
+            set.insert(Operation::Remove);
+            assert_eq!(set.len(), 2);
+            assert!(set.contains(&Operation::Install));
+            assert!(!set.contains(&Operation::Update));
+        }
+    }
+
+    mod operation_options_tests {
+        use super::*;
+
+        #[test]
+        fn test_operation_options_default() {
+            let options = OperationOptions::default();
+            assert!(!options.no_confirm);
+            assert!(options.use_sudo);
+            assert!(!options.verbose);
+            assert!(!options.dry_run);
+            assert!(options.show_commands);
+            assert_eq!(options.install_behavior, InstallBehavior::Default);
+            assert!(options.extra_flags.is_empty());
+            assert!(!options.force);
+        }
+
+        #[test]
+        fn test_operation_options_new() {
+            let options = OperationOptions::new();
+            assert_eq!(options.no_confirm, OperationOptions::default().no_confirm);
+        }
+
+        #[test]
+        fn test_operation_options_with_no_confirm() {
+            let options = OperationOptions::new().with_no_confirm(true);
+            assert!(options.no_confirm);
+            let options = OperationOptions::new().with_no_confirm(false);
+            assert!(!options.no_confirm);
+        }
+
+        #[test]
+        fn test_operation_options_with_sudo() {
+            let options = OperationOptions::new().with_sudo(false);
+            assert!(!options.use_sudo);
+            let options = OperationOptions::new().with_sudo(true);
+            assert!(options.use_sudo);
+        }
+
+        #[test]
+        fn test_operation_options_with_verbose() {
+            let options = OperationOptions::new().with_verbose(true);
+            assert!(options.verbose);
+            let options = OperationOptions::new().with_verbose(false);
+            assert!(!options.verbose);
+        }
+
+        #[test]
+        fn test_operation_options_with_dry_run() {
+            let options = OperationOptions::new().with_dry_run(true);
+            assert!(options.dry_run);
+            let options = OperationOptions::new().with_dry_run(false);
+            assert!(!options.dry_run);
+        }
+
+        #[test]
+        fn test_operation_options_with_force() {
+            let options = OperationOptions::new().with_force(true);
+            assert!(options.force);
+            let options = OperationOptions::new().with_force(false);
+            assert!(!options.force);
+        }
+
+        #[test]
+        fn test_operation_options_with_show_commands() {
+            let options = OperationOptions::new().with_show_commands(false);
+            assert!(!options.show_commands);
+            let options = OperationOptions::new().with_show_commands(true);
+            assert!(options.show_commands);
+        }
+
+        #[test]
+        fn test_operation_options_with_install_behavior() {
+            let options = OperationOptions::new().with_install_behavior(InstallBehavior::Skip);
+            assert_eq!(options.install_behavior, InstallBehavior::Skip);
+            let options = OperationOptions::new().with_install_behavior(InstallBehavior::Reinstall);
+            assert_eq!(options.install_behavior, InstallBehavior::Reinstall);
+        }
+
+        #[test]
+        fn test_operation_options_extra_flags() {
+            let options = OperationOptions::new()
+                .with_extra_flags(vec!["--test-flag".to_string(), "-v".to_string()]);
+
+            assert_eq!(options.extra_flags.len(), 2);
+            assert_eq!(options.extra_flags[0], "--test-flag");
+            assert_eq!(options.extra_flags[1], "-v");
+        }
+
+        #[test]
+        fn test_operation_options_append_extra_flags() {
+            let options = OperationOptions::new()
+                .append_extra_flags(&["--flag1".to_string()])
+                .append_extra_flags(&["--flag2".to_string(), "--flag3".to_string()]);
+
+            assert_eq!(options.extra_flags.len(), 3);
+            assert_eq!(options.extra_flags[0], "--flag1");
+            assert_eq!(options.extra_flags[1], "--flag2");
+            assert_eq!(options.extra_flags[2], "--flag3");
+        }
+
+        #[test]
+        fn test_operation_options_append_empty_flags() {
+            let options = OperationOptions::new().append_extra_flags(&[]);
+            assert_eq!(options.extra_flags.len(), 0);
+        }
+
+        #[test]
+        fn test_operation_options_builder_chaining() {
+            let options = OperationOptions::new()
+                .with_no_confirm(true)
+                .with_sudo(false)
+                .with_verbose(true)
+                .with_dry_run(true)
+                .with_force(true)
+                .with_show_commands(false)
+                .with_install_behavior(InstallBehavior::Skip)
+                .with_extra_flags(vec!["--flag1".to_string()])
+                .append_extra_flags(&["--flag2".to_string()]);
+
+            assert!(options.no_confirm);
+            assert!(!options.use_sudo);
+            assert!(options.verbose);
+            assert!(options.dry_run);
+            assert!(options.force);
+            assert!(!options.show_commands);
+            assert_eq!(options.install_behavior, InstallBehavior::Skip);
+            assert_eq!(options.extra_flags.len(), 2);
+        }
+
+        #[test]
+        fn test_operation_options_clone() {
+            let options1 = OperationOptions::new()
+                .with_verbose(true)
+                .with_extra_flags(vec!["--test".to_string()]);
+            let options2 = options1.clone();
+            assert_eq!(options1.verbose, options2.verbose);
+            assert_eq!(options1.extra_flags, options2.extra_flags);
+        }
     }
 }

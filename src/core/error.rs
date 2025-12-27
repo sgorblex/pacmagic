@@ -74,3 +74,119 @@ impl PacMagicError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_error_is_recoverable() {
+        assert!(PacMagicError::PackageNotFound("test".to_string()).is_recoverable());
+        assert!(PacMagicError::OperationNotSupported {
+            pm: "apt".to_string(),
+            op: "test".to_string(),
+        }
+        .is_recoverable());
+        assert!(!PacMagicError::NoPackageManagerFound.is_recoverable());
+        assert!(!PacMagicError::PermissionDenied("test".to_string()).is_recoverable());
+        assert!(!PacMagicError::ExecutionError("test".to_string()).is_recoverable());
+    }
+
+    #[test]
+    fn test_error_is_command_failure() {
+        assert!(
+            PacMagicError::ExecutionError("Command failed with exit code 1".to_string())
+                .is_command_failure()
+        );
+        assert!(
+            PacMagicError::ExecutionError("Command failed with exit code 127".to_string())
+                .is_command_failure()
+        );
+        assert!(
+            !PacMagicError::ExecutionError("Some other error".to_string()).is_command_failure()
+        );
+        assert!(!PacMagicError::NoPackageManagerFound.is_command_failure());
+    }
+
+    #[test]
+    fn test_error_help_text() {
+        assert!(PacMagicError::NoPackageManagerFound.help_text().is_some());
+        assert!(PacMagicError::PermissionDenied("test".to_string())
+            .help_text()
+            .is_some());
+        assert!(PacMagicError::PackageManagerNotAvailable("apt".to_string())
+            .help_text()
+            .is_some());
+        assert!(PacMagicError::InvalidOperation("test".to_string())
+            .help_text()
+            .is_some());
+        assert!(PacMagicError::ConfigError("test".to_string())
+            .help_text()
+            .is_some());
+        assert!(PacMagicError::PackageNotFound("test".to_string())
+            .help_text()
+            .is_none());
+    }
+
+    #[test]
+    fn test_error_display() {
+        let err = PacMagicError::NoPackageManagerFound;
+        assert!(err.to_string().contains("No package manager found"));
+
+        let err = PacMagicError::PackageManagerNotAvailable("apt".to_string());
+        assert!(err.to_string().contains("apt"));
+
+        let err = PacMagicError::OperationNotSupported {
+            pm: "apt".to_string(),
+            op: "test".to_string(),
+        };
+        assert!(err.to_string().contains("apt"));
+        assert!(err.to_string().contains("test"));
+    }
+
+    #[test]
+    fn test_error_from_io_error() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
+        let err: PacMagicError = io_err.into();
+        match err {
+            PacMagicError::IoError(_) => {}
+            _ => panic!("Expected IoError"),
+        }
+    }
+
+    #[test]
+    fn test_error_from_serde_error() {
+        let json = "invalid json";
+        let result: std::result::Result<serde_json::Value, _> = serde_json::from_str(json);
+        if let Err(serde_err) = result {
+            let err: PacMagicError = serde_err.into();
+            match err {
+                PacMagicError::SerializationError(_) => {}
+                _ => panic!("Expected SerializationError"),
+            }
+        }
+    }
+
+    #[test]
+    fn test_error_from_anyhow() {
+        let anyhow_err = anyhow::anyhow!("test error");
+        let err: PacMagicError = anyhow_err.into();
+        match err {
+            PacMagicError::Other(_) => {}
+            _ => panic!("Expected Other error"),
+        }
+    }
+
+    #[test]
+    fn test_error_result_type() {
+        fn returns_result() -> Result<()> {
+            Ok(())
+        }
+        assert!(returns_result().is_ok());
+
+        fn returns_error() -> Result<()> {
+            Err(PacMagicError::NoPackageManagerFound)
+        }
+        assert!(returns_error().is_err());
+    }
+}
