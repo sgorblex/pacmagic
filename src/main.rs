@@ -131,7 +131,7 @@ fn main() {
 
     let mut default_command_used = false;
     let mut multi_command_alias: Option<Vec<Operation>> = None;
-    
+
     if args.len() == 1 {
         if let Ok(pm) = PacMagic::new() {
             let config = pm.config();
@@ -175,14 +175,12 @@ fn main() {
             }
             process::exit(1);
         }
-    } else {
-        if let Err(e) = run(cli, default_command_used) {
-            eprintln!("Error: {}", e);
-            if let Some(help) = e.help_text() {
-                eprintln!("Help: {}", help);
-            }
-            process::exit(1);
+    } else if let Err(e) = run(cli, default_command_used) {
+        eprintln!("Error: {}", e);
+        if let Some(help) = e.help_text() {
+            eprintln!("Help: {}", help);
         }
+        process::exit(1);
     }
 }
 
@@ -239,7 +237,7 @@ fn run(cli: Cli, default_command_used: bool) -> pacmagic::Result<()> {
                         }
                         return Ok(());
                     } else if let Some(op) = pm.config().resolve_alias(default_cmd) {
-                        return execute_single_operation(&pm, op, &[], &options);
+                        return pm.execute(op, &[], &options);
                     }
                 }
             }
@@ -252,54 +250,54 @@ fn run(cli: Cli, default_command_used: bool) -> pacmagic::Result<()> {
     match command {
         Commands::Install { packages } => {
             let packages: Vec<&str> = packages.iter().map(|s| s.as_str()).collect();
-            execute_single_operation(&pm, Operation::Install, &packages, &options)?;
+            pm.execute(Operation::Install, &packages, &options)?;
         }
 
         Commands::Remove { packages } => {
             let packages: Vec<&str> = packages.iter().map(|s| s.as_str()).collect();
-            execute_single_operation(&pm, Operation::Remove, &packages, &options)?;
+            pm.execute(Operation::Remove, &packages, &options)?;
         }
 
         Commands::Update => {
-            execute_single_operation(&pm, Operation::Update, &[], &options)?;
+            pm.execute(Operation::Update, &[], &options)?;
         }
 
         Commands::Upgrade { packages } => {
             if packages.is_empty() {
-                execute_single_operation(&pm, Operation::UpgradeAll, &[], &options)?;
+                pm.execute(Operation::UpgradeAll, &[], &options)?;
             } else {
                 let packages: Vec<&str> = packages.iter().map(|s| s.as_str()).collect();
-                execute_single_operation(&pm, Operation::Upgrade, &packages, &options)?;
+                pm.execute(Operation::Upgrade, &packages, &options)?;
             }
         }
 
         Commands::Search { query } => {
-            execute_single_operation(&pm, Operation::Search, &[&query], &options)?;
+            pm.execute(Operation::Search, &[&query], &options)?;
         }
 
         Commands::List => {
-            execute_single_operation(&pm, Operation::List, &[], &options)?;
+            pm.execute(Operation::List, &[], &options)?;
         }
 
         Commands::Info { packages } => {
             let packages: Vec<&str> = packages.iter().map(|s| s.as_str()).collect();
-            execute_single_operation(&pm, Operation::Info, &packages, &options)?;
+            pm.execute(Operation::Info, &packages, &options)?;
         }
 
         Commands::Clean => {
-            execute_single_operation(&pm, Operation::Clean, &[], &options)?;
+            pm.execute(Operation::Clean, &[], &options)?;
         }
 
         Commands::Files { package } => {
-            execute_single_operation(&pm, Operation::Files, &[&package], &options)?;
+            pm.execute(Operation::Files, &[&package], &options)?;
         }
 
         Commands::Check => {
-            execute_single_operation(&pm, Operation::Check, &[], &options)?;
+            pm.execute(Operation::Check, &[], &options)?;
         }
 
         Commands::Autoremove => {
-            execute_single_operation(&pm, Operation::Autoremove, &[], &options)?;
+            pm.execute(Operation::Autoremove, &[], &options)?;
         }
 
         Commands::Detect => {
@@ -331,13 +329,4 @@ fn run(cli: Cli, default_command_used: bool) -> pacmagic::Result<()> {
     }
 
     Ok(())
-}
-
-fn execute_single_operation(
-    pm: &PacMagic,
-    operation: Operation,
-    packages: &[&str],
-    options: &OperationOptions,
-) -> pacmagic::Result<()> {
-    pm.execute(operation, packages, options)
 }

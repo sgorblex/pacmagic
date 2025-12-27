@@ -67,10 +67,10 @@ mod tests {
         assert!(validate_package_name("package_name").is_ok());
         assert!(validate_package_name("my+package").is_ok());
         assert!(validate_package_name("package~test").is_ok());
-        assert!(validate_package_name("core/gcc").is_ok()); // pacman style
-        assert!(validate_package_name("package:arch").is_ok()); // debian style
-        assert!(validate_package_name("@scope/package").is_ok()); // npm style
-        assert!(validate_package_name("python*").is_ok()); // wildcard for search
+        assert!(validate_package_name("core/gcc").is_ok());
+        assert!(validate_package_name("package:arch").is_ok());
+        assert!(validate_package_name("@scope/package").is_ok());
+        assert!(validate_package_name("python*").is_ok());
     }
 
     #[test]
@@ -82,7 +82,7 @@ mod tests {
         assert!(validate_package_name("package$(ls)").is_err());
         assert!(validate_package_name("package`ls`").is_err());
         assert!(validate_package_name("package\nls").is_err());
-        assert!(validate_package_name("-option").is_err()); // Looks like option
+        assert!(validate_package_name("-option").is_err());
     }
 
     #[test]
@@ -94,7 +94,7 @@ mod tests {
     #[test]
     fn test_search_query_validation() {
         assert!(validate_search_query("python").is_ok());
-        assert!(validate_search_query("python3 lib").is_ok()); // spaces ok in search
+        assert!(validate_search_query("python3 lib").is_ok());
         assert!(validate_search_query("lib-ssl").is_ok());
         assert!(validate_search_query("").is_err());
         assert!(validate_search_query("bad;query").is_err());

@@ -7,7 +7,10 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub general: GeneralConfig,
-    #[serde(serialize_with = "serialize_aliases", deserialize_with = "deserialize_aliases")]
+    #[serde(
+        serialize_with = "serialize_aliases",
+        deserialize_with = "deserialize_aliases"
+    )]
     pub aliases: HashMap<String, AliasValue>,
     pub package_managers: HashMap<String, PackageManagerConfig>,
 }
@@ -44,13 +47,15 @@ where
     map.serialize(serializer)
 }
 
-fn deserialize_aliases<'de, D>(deserializer: D) -> std::result::Result<HashMap<String, AliasValue>, D::Error>
+fn deserialize_aliases<'de, D>(
+    deserializer: D,
+) -> std::result::Result<HashMap<String, AliasValue>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
     let map: HashMap<String, toml::Value> = HashMap::deserialize(deserializer)?;
     let mut result = HashMap::new();
-    
+
     for (key, value) in map {
         let alias_value = match value {
             toml::Value::String(s) => AliasValue::Single(s),
@@ -61,17 +66,23 @@ where
                         if let toml::Value::String(s) = v {
                             Ok(s)
                         } else {
-                            Err(serde::de::Error::custom("Alias array must contain only strings"))
+                            Err(serde::de::Error::custom(
+                                "Alias array must contain only strings",
+                            ))
                         }
                     })
                     .collect();
                 AliasValue::Multiple(strings?)
             }
-            _ => return Err(serde::de::Error::custom("Alias must be a string or array of strings")),
+            _ => {
+                return Err(serde::de::Error::custom(
+                    "Alias must be a string or array of strings",
+                ))
+            }
         };
         result.insert(key, alias_value);
     }
-    
+
     Ok(result)
 }
 
@@ -255,31 +266,25 @@ impl Config {
 
     /// Resolve an alias to a single operation (for backward compatibility)
     pub fn resolve_alias(&self, alias: &str) -> Option<Operation> {
-        self.aliases.get(alias).and_then(|value| {
-            match value {
-                AliasValue::Single(s) => Operation::try_from_str(s),
-                AliasValue::Multiple(_) => None,
-            }
+        self.aliases.get(alias).and_then(|value| match value {
+            AliasValue::Single(s) => Operation::try_from_str(s),
+            AliasValue::Multiple(_) => None,
         })
     }
 
     /// Resolve an alias to a sequence of operations
     pub fn resolve_alias_sequence(&self, alias: &str) -> Option<Vec<Operation>> {
-        self.aliases.get(alias).and_then(|value| {
-            match value {
-                AliasValue::Single(s) => {
-                    Operation::try_from_str(s).map(|op| vec![op])
-                }
-                AliasValue::Multiple(ops) => {
-                    let operations: Vec<Operation> = ops
-                        .iter()
-                        .filter_map(|s| Operation::try_from_str(s))
-                        .collect();
-                    if operations.len() == ops.len() {
-                        Some(operations)
-                    } else {
-                        None
-                    }
+        self.aliases.get(alias).and_then(|value| match value {
+            AliasValue::Single(s) => Operation::try_from_str(s).map(|op| vec![op]),
+            AliasValue::Multiple(ops) => {
+                let operations: Vec<Operation> = ops
+                    .iter()
+                    .filter_map(|s| Operation::try_from_str(s))
+                    .collect();
+                if operations.len() == ops.len() {
+                    Some(operations)
+                } else {
+                    None
                 }
             }
         })
@@ -343,7 +348,7 @@ mod tests {
         let config = Config::default();
         let op = config.resolve_alias("install");
         assert_eq!(op, Some(Operation::Install));
-        
+
         let ops = config.resolve_alias_sequence("install");
         assert_eq!(ops, Some(vec![Operation::Install]));
     }

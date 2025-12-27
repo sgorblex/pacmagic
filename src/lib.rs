@@ -165,11 +165,9 @@ mod tests {
         let pm = PacMagic::with_config(config);
         let options = OperationOptions::default();
 
-        // This should fail due to validation
         let result = pm.execute(Operation::Install, &["package;ls"], &options);
         assert!(result.is_err());
 
-        // This should also fail
         let result = pm.execute(Operation::Install, &["package|cat"], &options);
         assert!(result.is_err());
     }
@@ -180,14 +178,9 @@ mod tests {
         let pm = PacMagic::with_config(config);
         let options = OperationOptions::default();
 
-        // Search queries with spaces should work (validation passes)
         let result = pm.execute(Operation::Search, &["python lib"], &options);
-        // This might fail if no package manager is available, but not due to validation
         if let Err(e) = result {
-            // Should not be an InvalidOperation error from validation
-            // Could be NoPackageManagerFound or other errors
             if matches!(e, PacMagicError::InvalidOperation(_)) {
-                // If it's InvalidOperation, the message should not be about dangerous characters
                 let msg = format!("{}", e);
                 assert!(
                     !msg.contains("Invalid character"),
@@ -196,7 +189,6 @@ mod tests {
             }
         }
 
-        // This should fail due to dangerous characters
         let result = pm.execute(Operation::Search, &["python;ls"], &options);
         assert!(result.is_err());
         if let Err(e) = result {
