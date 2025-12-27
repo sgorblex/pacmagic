@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand, ValueEnum};
-use pacmagic::{Config, InstallBehavior, Operation, OperationOptions, PacMagic};
+use pacmagic::{Config, InstallBehavior, Operation, OperationOptions, PacMagic, PlatformDetector};
 use std::process;
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
@@ -133,6 +133,13 @@ enum Commands {
         /// File path or command name
         file_or_command: String,
     },
+
+    #[command(next_help_heading = "Extra Commands")]
+    /// Show detected operating system and distribution
+    Distro,
+
+    /// Check if the current distribution is a rolling release
+    RollingRelease,
 }
 
 fn main() {
@@ -304,6 +311,8 @@ fn extract_unknown_args(args: &[String], _error: &clap::Error) -> Vec<String> {
         "completions",
         "init-config",
         "owns",
+        "distro",
+        "rolling-release",
     ];
 
     let mut unknown = Vec::new();
@@ -530,6 +539,15 @@ fn run(cli: Cli, default_command_used: bool) -> pacmagic::Result<()> {
 
         Commands::Owns { file_or_command } => {
             pm.execute(Operation::Owns, &[&file_or_command], &options)?;
+        }
+
+        Commands::Distro => {
+            println!("{}", PlatformDetector::platform_description());
+        }
+
+        Commands::RollingRelease => {
+            let is_rolling = PlatformDetector::is_rolling_release();
+            println!("{}", if is_rolling { "yes" } else { "no" });
         }
     }
 

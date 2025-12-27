@@ -102,6 +102,65 @@ impl PlatformDetector {
             OperatingSystem::Unknown => None,
         }
     }
+
+    /// Check if the current distribution is a rolling release
+    #[cfg(target_os = "linux")]
+    pub fn is_rolling_release() -> bool {
+        match Self::detect_linux_distro() {
+            LinuxDistribution::Arch => true,
+            LinuxDistribution::Gentoo => true,
+            LinuxDistribution::OpenSUSE => {
+                if let Ok(contents) = fs::read_to_string("/etc/os-release") {
+                    contents.contains("Tumbleweed")
+                } else {
+                    false
+                }
+            }
+            LinuxDistribution::Debian => {
+                if let Ok(contents) = fs::read_to_string("/etc/os-release") {
+                    contents.contains("Debian GNU/Linux testing")
+                        || contents.contains("Debian GNU/Linux unstable")
+                        || contents.contains("Debian GNU/Linux sid")
+                } else {
+                    false
+                }
+            }
+            LinuxDistribution::Fedora => {
+                if let Ok(contents) = fs::read_to_string("/etc/os-release") {
+                    contents.contains("Rawhide")
+                } else {
+                    false
+                }
+            }
+            LinuxDistribution::Ubuntu
+            | LinuxDistribution::PopOS
+            | LinuxDistribution::RedHat
+            | LinuxDistribution::Alpine
+            | LinuxDistribution::Unknown => false,
+        }
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    pub fn is_rolling_release() -> bool {
+        false
+    }
+
+    /// Get a human-readable description of the current platform
+    pub fn platform_description() -> String {
+        match Self::detect_os() {
+            OperatingSystem::Linux => {
+                #[cfg(target_os = "linux")]
+                {
+                    format!("{} ({})", Self::detect_linux_distro(), Self::detect_os())
+                }
+                #[cfg(not(target_os = "linux"))]
+                {
+                    Self::detect_os().to_string()
+                }
+            }
+            os => os.to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -111,6 +170,19 @@ pub enum OperatingSystem {
     Windows,
     FreeBSD,
     Unknown,
+}
+
+impl std::fmt::Display for OperatingSystem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            OperatingSystem::Linux => "Linux",
+            OperatingSystem::MacOS => "macOS",
+            OperatingSystem::Windows => "Windows",
+            OperatingSystem::FreeBSD => "FreeBSD",
+            OperatingSystem::Unknown => "Unknown",
+        };
+        write!(f, "{}", s)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -126,6 +198,25 @@ pub enum LinuxDistribution {
     Alpine,
     Gentoo,
     Unknown,
+}
+
+#[cfg(target_os = "linux")]
+impl std::fmt::Display for LinuxDistribution {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            LinuxDistribution::Arch => "Arch Linux",
+            LinuxDistribution::Debian => "Debian",
+            LinuxDistribution::Ubuntu => "Ubuntu",
+            LinuxDistribution::PopOS => "Pop!_OS",
+            LinuxDistribution::Fedora => "Fedora",
+            LinuxDistribution::RedHat => "Red Hat",
+            LinuxDistribution::OpenSUSE => "openSUSE",
+            LinuxDistribution::Alpine => "Alpine Linux",
+            LinuxDistribution::Gentoo => "Gentoo",
+            LinuxDistribution::Unknown => "Unknown",
+        };
+        write!(f, "{}", s)
+    }
 }
 
 #[cfg(test)]
