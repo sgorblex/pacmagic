@@ -18,8 +18,14 @@ use_sudo = true
 # Options: "default" (package manager default), "upgrade", "reinstall", "skip"
 install_behavior = "default"
 
+# Default command to run when pacmagic is invoked without arguments
+# Set to an alias name (e.g., "full-upgrade") or an operation name
+# If not set, pacmagic will show an error when run without arguments
+default_command = "full-upgrade"
+
 # Command aliases
 # Map short commands to operations
+# Aliases can be single operations or sequences of operations (arrays)
 [aliases]
 i = "install"
 rm = "remove"
@@ -29,6 +35,14 @@ s = "search"
 ls = "list"
 info = "info"
 clean = "clean"
+
+# Multi-command aliases: run multiple operations in sequence
+# Example: "full-upgrade" runs update, upgrade-all, autoremove, and clean
+full-upgrade = ["update", "upgrade-all", "autoremove", "clean"]
+
+# You can create custom sequences for common workflows
+sync = ["update", "upgrade-all"]
+cleanup = ["autoremove", "clean"]
 
 # Package manager specific configuration
 [package_managers.apt]

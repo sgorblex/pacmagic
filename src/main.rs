@@ -26,7 +26,7 @@ impl From<InstallBehaviorArg> for InstallBehavior {
 #[command(author, version, about = "A universal package manager wrapper", long_about = None)]
 struct Cli {
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 
     /// Use a specific package manager
     #[arg(short = 'p', long, global = true)]
@@ -129,10 +129,37 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let mut resolved_args = args.clone();
 
-    if args.len() > 1 {
+    let mut default_command_used = false;
+    let mut multi_command_alias: Option<Vec<Operation>> = None;
+    
+    if args.len() == 1 {
         if let Ok(pm) = PacMagic::new() {
             let config = pm.config();
-            if let Some(op) = config.resolve_alias(&args[1]) {
+            if let Some(default_cmd) = &config.general.default_command {
+                if let Some(ops) = config.resolve_alias_sequence(default_cmd) {
+                    if ops.len() > 1 {
+                        multi_command_alias = Some(ops);
+                    } else if ops.len() == 1 {
+                        resolved_args.push(ops[0].to_string());
+                    } else {
+                        resolved_args.push(default_cmd.clone());
+                    }
+                } else {
+                    resolved_args.push(default_cmd.clone());
+                }
+                default_command_used = true;
+            }
+        }
+    } else if args.len() > 1 {
+        if let Ok(pm) = PacMagic::new() {
+            let config = pm.config();
+            if let Some(ops) = config.resolve_alias_sequence(&args[1]) {
+                if ops.len() > 1 {
+                    multi_command_alias = Some(ops);
+                } else if ops.len() == 1 {
+                    resolved_args[1] = ops[0].to_string();
+                }
+            } else if let Some(op) = config.resolve_alias(&args[1]) {
                 resolved_args[1] = op.to_string();
             }
         }
@@ -140,16 +167,51 @@ fn main() {
 
     let cli = Cli::parse_from(resolved_args);
 
-    if let Err(e) = run(cli) {
-        eprintln!("Error: {}", e);
-        if let Some(help) = e.help_text() {
-            eprintln!("Help: {}", help);
+    if let Some(ops) = multi_command_alias {
+        if let Err(e) = run_multi_command(cli, ops) {
+            eprintln!("Error: {}", e);
+            if let Some(help) = e.help_text() {
+                eprintln!("Help: {}", help);
+            }
+            process::exit(1);
         }
-        process::exit(1);
+    } else {
+        if let Err(e) = run(cli, default_command_used) {
+            eprintln!("Error: {}", e);
+            if let Some(help) = e.help_text() {
+                eprintln!("Help: {}", help);
+            }
+            process::exit(1);
+        }
     }
 }
 
-fn run(cli: Cli) -> pacmagic::Result<()> {
+fn run_multi_command(cli: Cli, operations: Vec<Operation>) -> pacmagic::Result<()> {
+    let mut pm = PacMagic::new()?;
+
+    if let Some(pm_name) = &cli.package_manager {
+        pm.config_mut().general.default_package_manager = pm_name.clone();
+    }
+
+    let options = OperationOptions::new()
+        .with_verbose(cli.verbose)
+        .with_dry_run(cli.dry_run)
+        .with_no_confirm(cli.yes)
+        .with_show_commands(!cli.quiet)
+        .with_install_behavior(
+            cli.install_behavior
+                .map(Into::into)
+                .unwrap_or(InstallBehavior::Default),
+        );
+
+    for op in operations {
+        pm.execute(op, &[], &options)?;
+    }
+
+    Ok(())
+}
+
+fn run(cli: Cli, default_command_used: bool) -> pacmagic::Result<()> {
     let mut pm = PacMagic::new()?;
 
     if let Some(pm_name) = &cli.package_manager {
@@ -166,57 +228,78 @@ fn run(cli: Cli) -> pacmagic::Result<()> {
         options = options.with_install_behavior(behavior.into());
     }
 
-    match cli.command {
+    let command = match cli.command {
+        Some(cmd) => cmd,
+        None => {
+            if default_command_used {
+                if let Some(default_cmd) = &pm.config().general.default_command {
+                    if let Some(ops) = pm.config().resolve_alias_sequence(default_cmd) {
+                        for op in ops {
+                            pm.execute(op, &[], &options)?;
+                        }
+                        return Ok(());
+                    } else if let Some(op) = pm.config().resolve_alias(default_cmd) {
+                        return execute_single_operation(&pm, op, &[], &options);
+                    }
+                }
+            }
+            eprintln!("No command specified and no default command configured.");
+            eprintln!("Run 'pacmagic --help' to see available commands.");
+            process::exit(1);
+        }
+    };
+
+    match command {
         Commands::Install { packages } => {
             let packages: Vec<&str> = packages.iter().map(|s| s.as_str()).collect();
-            pm.execute(Operation::Install, &packages, &options)?;
+            execute_single_operation(&pm, Operation::Install, &packages, &options)?;
         }
 
         Commands::Remove { packages } => {
             let packages: Vec<&str> = packages.iter().map(|s| s.as_str()).collect();
-            pm.execute(Operation::Remove, &packages, &options)?;
+            execute_single_operation(&pm, Operation::Remove, &packages, &options)?;
         }
 
         Commands::Update => {
-            pm.execute(Operation::Update, &[], &options)?;
+            execute_single_operation(&pm, Operation::Update, &[], &options)?;
         }
 
         Commands::Upgrade { packages } => {
             if packages.is_empty() {
-                pm.execute(Operation::UpgradeAll, &[], &options)?;
+                execute_single_operation(&pm, Operation::UpgradeAll, &[], &options)?;
             } else {
                 let packages: Vec<&str> = packages.iter().map(|s| s.as_str()).collect();
-                pm.execute(Operation::Upgrade, &packages, &options)?;
+                execute_single_operation(&pm, Operation::Upgrade, &packages, &options)?;
             }
         }
 
         Commands::Search { query } => {
-            pm.execute(Operation::Search, &[&query], &options)?;
+            execute_single_operation(&pm, Operation::Search, &[&query], &options)?;
         }
 
         Commands::List => {
-            pm.execute(Operation::List, &[], &options)?;
+            execute_single_operation(&pm, Operation::List, &[], &options)?;
         }
 
         Commands::Info { packages } => {
             let packages: Vec<&str> = packages.iter().map(|s| s.as_str()).collect();
-            pm.execute(Operation::Info, &packages, &options)?;
+            execute_single_operation(&pm, Operation::Info, &packages, &options)?;
         }
 
         Commands::Clean => {
-            pm.execute(Operation::Clean, &[], &options)?;
+            execute_single_operation(&pm, Operation::Clean, &[], &options)?;
         }
 
         Commands::Files { package } => {
-            pm.execute(Operation::Files, &[&package], &options)?;
+            execute_single_operation(&pm, Operation::Files, &[&package], &options)?;
         }
 
         Commands::Check => {
-            pm.execute(Operation::Check, &[], &options)?;
+            execute_single_operation(&pm, Operation::Check, &[], &options)?;
         }
 
         Commands::Autoremove => {
-            pm.execute(Operation::Autoremove, &[], &options)?;
+            execute_single_operation(&pm, Operation::Autoremove, &[], &options)?;
         }
 
         Commands::Detect => {
@@ -248,4 +331,13 @@ fn run(cli: Cli) -> pacmagic::Result<()> {
     }
 
     Ok(())
+}
+
+fn execute_single_operation(
+    pm: &PacMagic,
+    operation: Operation,
+    packages: &[&str],
+    options: &OperationOptions,
+) -> pacmagic::Result<()> {
+    pm.execute(operation, packages, options)
 }
