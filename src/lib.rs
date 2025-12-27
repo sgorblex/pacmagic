@@ -68,10 +68,7 @@ impl PacMagic {
         packages: &[&str],
         options: &OperationOptions,
     ) -> Result<()> {
-        let mut options = options.clone();
-        if options.install_behavior == InstallBehavior::Default {
-            options.install_behavior = self.config.general.install_behavior;
-        }
+        let options = options.clone();
         if !packages.is_empty() && operation != Operation::Search {
             core::validate_package_names(packages)?;
         }

@@ -18,9 +18,13 @@ pub enum InstallBehavior {
     #[serde(alias = "reinstall")]
     Reinstall,
 
-    /// Skip installation if package is already installed
+    /// Skip installation if package is already installed (with info message)
     #[serde(alias = "skip")]
     Skip,
+
+    /// Abort with error if package is already installed
+    #[serde(alias = "abort")]
+    Abort,
 }
 
 impl fmt::Display for InstallBehavior {
@@ -30,6 +34,7 @@ impl fmt::Display for InstallBehavior {
             InstallBehavior::Upgrade => "upgrade",
             InstallBehavior::Reinstall => "reinstall",
             InstallBehavior::Skip => "skip",
+            InstallBehavior::Abort => "abort",
         };
         write!(f, "{}", s)
     }
@@ -44,6 +49,7 @@ impl FromStr for InstallBehavior {
             "upgrade" => Ok(InstallBehavior::Upgrade),
             "reinstall" => Ok(InstallBehavior::Reinstall),
             "skip" => Ok(InstallBehavior::Skip),
+            "abort" => Ok(InstallBehavior::Abort),
             _ => Err(format!("Unknown install behavior: {}", s)),
         }
     }
@@ -278,6 +284,7 @@ mod tests {
             assert_eq!(InstallBehavior::Upgrade.to_string(), "upgrade");
             assert_eq!(InstallBehavior::Reinstall.to_string(), "reinstall");
             assert_eq!(InstallBehavior::Skip.to_string(), "skip");
+            assert_eq!(InstallBehavior::Abort.to_string(), "abort");
         }
 
         #[test]
@@ -298,6 +305,10 @@ mod tests {
                 InstallBehavior::from_str("skip").unwrap(),
                 InstallBehavior::Skip
             );
+            assert_eq!(
+                InstallBehavior::from_str("abort").unwrap(),
+                InstallBehavior::Abort
+            );
         }
 
         #[test]
@@ -317,6 +328,10 @@ mod tests {
             assert_eq!(
                 InstallBehavior::from_str("Skip").unwrap(),
                 InstallBehavior::Skip
+            );
+            assert_eq!(
+                InstallBehavior::from_str("Abort").unwrap(),
+                InstallBehavior::Abort
             );
         }
 
@@ -342,6 +357,7 @@ mod tests {
                 InstallBehavior::Upgrade,
                 InstallBehavior::Reinstall,
                 InstallBehavior::Skip,
+                InstallBehavior::Abort,
             ] {
                 let json = serde_json::to_string(&behavior).unwrap();
                 let parsed: InstallBehavior = serde_json::from_str(&json).unwrap();

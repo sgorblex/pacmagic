@@ -82,21 +82,63 @@ impl PackageManager for Pacman {
     fn install(&self, packages: &[&str], options: &OperationOptions) -> Result<()> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose)
             .with_show_commands(options.show_commands);
-        let mut cmd = self.build_command(options);
 
+        if options.install_behavior == InstallBehavior::Abort {
+            let installed = self.list_installed(options)?;
+            let installed_names: std::collections::HashSet<String> =
+                installed.iter().map(|p| p.name.clone()).collect();
+            let mut already_installed = Vec::new();
+            for package in packages {
+                if installed_names.contains(*package) {
+                    already_installed.push(*package);
+                }
+            }
+            if !already_installed.is_empty() {
+                return Err(crate::core::error::PacMagicError::ExecutionError(format!(
+                    "Package(s) already installed: {}",
+                    already_installed.join(", ")
+                )));
+            }
+        }
+
+        let mut cmd = self.build_command(options);
         cmd.arg("-S");
 
         match options.install_behavior {
             InstallBehavior::Reinstall => {
                 cmd.arg("--overwrite");
+                cmd.args(packages);
             }
             InstallBehavior::Skip => {
+                let installed = self.list_installed(options)?;
+                let installed_names: std::collections::HashSet<String> =
+                    installed.iter().map(|p| p.name.clone()).collect();
+                let mut skipped = Vec::new();
+                let mut to_install = Vec::new();
+                for package in packages {
+                    if installed_names.contains(*package) {
+                        skipped.push(*package);
+                    } else {
+                        to_install.push(*package);
+                    }
+                }
+                if !skipped.is_empty() {
+                    log::info!(
+                        "Skipping already installed package(s): {}",
+                        skipped.join(", ")
+                    );
+                }
+                if to_install.is_empty() {
+                    return Ok(());
+                }
                 cmd.arg("--needed");
+                cmd.args(&to_install);
             }
-            InstallBehavior::Upgrade | InstallBehavior::Default => {}
+            InstallBehavior::Upgrade | InstallBehavior::Default | InstallBehavior::Abort => {
+                cmd.args(packages);
+            }
         }
 
-        cmd.args(packages);
         cmd.args(&options.extra_flags);
 
         executor.execute_interactive(cmd)

@@ -8,6 +8,7 @@ enum InstallBehaviorArg {
     Upgrade,
     Reinstall,
     Skip,
+    Abort,
 }
 
 impl From<InstallBehaviorArg> for InstallBehavior {
@@ -17,6 +18,7 @@ impl From<InstallBehaviorArg> for InstallBehavior {
             InstallBehaviorArg::Upgrade => InstallBehavior::Upgrade,
             InstallBehaviorArg::Reinstall => InstallBehavior::Reinstall,
             InstallBehaviorArg::Skip => InstallBehavior::Skip,
+            InstallBehaviorArg::Abort => InstallBehavior::Abort,
         }
     }
 }
@@ -250,17 +252,18 @@ fn run_multi_command(cli: Cli, operations: Vec<Operation>) -> pacmagic::Result<(
         extra_flags.extend_from_slice(pm_args);
     }
 
-    let options = OperationOptions::new()
+    let mut options = OperationOptions::new()
         .with_verbose(cli.verbose)
         .with_dry_run(cli.dry_run)
         .with_no_confirm(cli.yes)
         .with_show_commands(!cli.quiet)
-        .with_install_behavior(
-            cli.install_behavior
-                .map(Into::into)
-                .unwrap_or(InstallBehavior::Default),
-        )
         .append_extra_flags(&extra_flags);
+
+    if let Some(behavior) = cli.install_behavior {
+        options = options.with_install_behavior(behavior.into());
+    } else {
+        options = options.with_install_behavior(pm.config().general.install_behavior);
+    }
 
     for op in operations {
         pm.execute(op, &[], &options)?;
@@ -420,6 +423,8 @@ fn run(cli: Cli, default_command_used: bool) -> pacmagic::Result<()> {
 
     if let Some(behavior) = cli.install_behavior {
         options = options.with_install_behavior(behavior.into());
+    } else {
+        options = options.with_install_behavior(pm.config().general.install_behavior);
     }
 
     let command = match cli.command {

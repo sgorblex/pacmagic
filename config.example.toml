@@ -15,7 +15,12 @@ verbose = false
 use_sudo = true
 
 # Default behavior when installing packages that are already installed
-# Options: "default" (package manager default), "upgrade", "reinstall", "skip"
+# Options: "default" (package manager default), "upgrade", "reinstall", "skip", "abort"
+# - default: Use package manager default behavior (usually upgrade if newer version available)
+# - upgrade: Upgrade the package if a newer version is available
+# - reinstall: Reinstall the package even if already installed
+# - skip: Skip installation if package is already installed (prints info message)
+# - abort: Abort with error if package is already installed
 install_behavior = "default"
 
 # Default command to run when pacmagic is invoked without arguments
