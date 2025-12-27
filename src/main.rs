@@ -169,16 +169,20 @@ fn main() {
 
     if let Some(ops) = multi_command_alias {
         if let Err(e) = run_multi_command(cli, ops) {
-            eprintln!("Error: {}", e);
-            if let Some(help) = e.help_text() {
-                eprintln!("Help: {}", help);
+            if !e.is_command_failure() {
+                eprintln!("Error: {}", e);
+                if let Some(help) = e.help_text() {
+                    eprintln!("Help: {}", help);
+                }
             }
             process::exit(1);
         }
     } else if let Err(e) = run(cli, default_command_used) {
-        eprintln!("Error: {}", e);
-        if let Some(help) = e.help_text() {
-            eprintln!("Help: {}", help);
+        if !e.is_command_failure() {
+            eprintln!("Error: {}", e);
+            if let Some(help) = e.help_text() {
+                eprintln!("Help: {}", help);
+            }
         }
         process::exit(1);
     }

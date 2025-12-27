@@ -87,11 +87,16 @@ impl CommandExecutor {
             let stderr = String::from_utf8_lossy(&output.stderr);
             let stdout = String::from_utf8_lossy(&output.stdout);
 
+            if !stdout.is_empty() {
+                print!("{}", stdout);
+            }
+            if !stderr.is_empty() {
+                eprint!("{}", stderr);
+            }
+
             return Err(PacMagicError::ExecutionError(format!(
-                "Command failed with exit code {:?}\nStdout: {}\nStderr: {}",
-                output.status.code(),
-                stdout,
-                stderr
+                "Command failed with exit code {:?}",
+                output.status.code()
             )));
         }
 

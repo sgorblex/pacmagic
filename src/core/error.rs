@@ -47,6 +47,11 @@ impl PacMagicError {
         )
     }
 
+    /// Returns true if this is a command failure (output already printed)
+    pub fn is_command_failure(&self) -> bool {
+        matches!(self, PacMagicError::ExecutionError(msg) if msg.contains("Command failed with exit code"))
+    }
+
     /// Returns a user-friendly error message with suggestions
     pub fn help_text(&self) -> Option<&str> {
         match self {
