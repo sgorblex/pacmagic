@@ -84,6 +84,67 @@ pacmagic init-config
 
 Edit `~/.config/pacmagic/config.toml` (Linux) or `~/Library/Application Support/pacmagic/config.toml` (macOS) to customize behavior.
 
+### Shell Completions
+
+PacMagic supports **dynamic shell completions** for bash, fish, and zsh. The completions are context-aware and include:
+
+- **Commands and aliases**: All commands plus any custom aliases from your config
+- **Package manager names**: Dynamic completion for `-p/--package-manager` flag
+- **Package names**: Dynamic completion for install/remove/upgrade/info commands (with 500ms timeout)
+- **Flags and options**: Planned (not yet implemented)
+
+The completions automatically detect your configuration and available package managers, making them fast and accurate.
+
+#### Bash
+
+```bash
+# Generate and save completions
+pacmagic completions bash > ~/.local/share/bash-completion/completions/pacmagic
+
+# Or for system-wide installation (requires sudo)
+sudo pacmagic completions bash > /usr/share/bash-completion/completions/pacmagic
+```
+
+If your system uses a different location for bash completions, you may need to adjust the path. Common locations include:
+- `~/.bash_completion.d/pacmagic`
+- `/etc/bash_completion.d/pacmagic`
+
+After installation, reload your shell or source the completion file:
+```bash
+source ~/.local/share/bash-completion/completions/pacmagic
+```
+
+#### Fish
+
+```fish
+# Generate and save completions
+pacmagic completions fish > ~/.config/fish/completions/pacmagic.fish
+```
+
+After installation, restart your fish shell or run:
+```fish
+source ~/.config/fish/completions/pacmagic.fish
+```
+
+#### Zsh
+
+```zsh
+# Generate and save completions
+pacmagic completions zsh > ~/.zsh/completions/_pacmagic
+
+# Ensure the completions directory is in your fpath
+# Add this to your ~/.zshrc if not already present:
+# fpath=(~/.zsh/completions $fpath)
+
+# Then reload completions
+autoload -U compinit && compinit
+```
+
+Alternatively, if you use Oh My Zsh:
+```zsh
+pacmagic completions zsh > ~/.oh-my-zsh/completions/_pacmagic
+```
+
 ## Contributing
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
@@ -117,5 +178,3 @@ cargo fmt
 ## License
 
 MIT
-
-

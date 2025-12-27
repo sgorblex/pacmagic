@@ -2,6 +2,10 @@ use clap::{Parser, Subcommand, ValueEnum};
 use pacmagic::{Config, InstallBehavior, Operation, OperationOptions, PacMagic, PlatformDetector};
 use std::process;
 
+mod command_names;
+mod completion;
+use completion::{generate_completions, CompletionContext};
+
 #[derive(Debug, Clone, Copy, ValueEnum)]
 enum InstallBehaviorArg {
     Default,
@@ -21,6 +25,13 @@ impl From<InstallBehaviorArg> for InstallBehavior {
             InstallBehaviorArg::Abort => InstallBehavior::Abort,
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum Shell {
+    Bash,
+    Fish,
+    Zsh,
 }
 
 #[derive(Parser)]
@@ -118,7 +129,7 @@ enum Commands {
     /// Generate shell completions
     Completions {
         /// Shell type
-        shell: String,
+        shell: Shell,
     },
 
     /// Initialize configuration file
@@ -143,6 +154,20 @@ enum Commands {
 }
 
 fn main() {
+    let completion_env_present = std::env::var_os("COMP_LINE").is_some()
+        || std::env::var_os("COMP_POINT").is_some()
+        || std::env::var_os("_FISH_COMPLETE").is_some();
+
+    if completion_env_present {
+        if let Some(context) = CompletionContext::from_env() {
+            let completions = generate_completions(context);
+            for comp in completions {
+                println!("{}", comp);
+            }
+        }
+        return;
+    }
+
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     let args: Vec<String> = std::env::args().collect();
@@ -294,26 +319,7 @@ fn extract_unknown_args(args: &[String], _error: &clap::Error) -> Vec<String> {
         "--install-behavior",
         "--pm-args",
     ];
-
-    let known_commands = [
-        "install",
-        "remove",
-        "update",
-        "upgrade",
-        "search",
-        "list",
-        "info",
-        "clean",
-        "files",
-        "check",
-        "autoremove",
-        "detect",
-        "completions",
-        "init-config",
-        "owns",
-        "distro",
-        "rolling-release",
-    ];
+    let known_commands = command_names::COMMAND_NAMES;
 
     let mut unknown = Vec::new();
     let mut i = 0;
@@ -522,8 +528,7 @@ fn run(cli: Cli, default_command_used: bool) -> pacmagic::Result<()> {
         }
 
         Commands::Completions { shell } => {
-            println!("Shell completions for {} not yet implemented", shell);
-            println!("This will be added in a future version.");
+            completion::generate_completion_script(shell);
         }
 
         Commands::InitConfig { force } => {

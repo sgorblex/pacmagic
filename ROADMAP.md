@@ -6,13 +6,14 @@ This document outlines the planned features and improvements for PacMagic.
 
 ✅ **Completed:**
 - Core trait-based architecture
-- Three package manager adapters (apt, pacman, brew)
+- Four package manager adapters (apt, pacman, brew, paru)
 - Configuration system with TOML
 - CLI interface with clap
 - Operation abstraction layer
 - Platform detection
 - Error handling system
 - Basic documentation
+- Shell completions (bash, fish, zsh)
 
 ## Phase 1: Core Stability (v0.2.0 - v0.5.0)
 
@@ -133,7 +134,6 @@ This document outlines the planned features and improvements for PacMagic.
 ### Developer Experience
 - Integration with IDEs
 - VS Code extension
-- Shell completions for all major shells
 - Man pages and documentation
 - Interactive tutorials
 
@@ -188,5 +188,3 @@ The roadmap is a living document. We adjust based on:
 - Industry trends
 
 Let us know what matters to you!
-
-
