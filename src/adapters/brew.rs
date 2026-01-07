@@ -67,6 +67,7 @@ impl PackageManager for Brew {
                 | Operation::Info
                 | Operation::Clean
                 | Operation::Check
+                | Operation::Autoremove
                 | Operation::Owns
         )
     }
@@ -307,12 +308,15 @@ impl PackageManager for Brew {
         executor.execute_checked(cmd)
     }
 
-    fn autoremove(&self, _options: &OperationOptions) -> Result<()> {
-        // Brew doesn't have a direct autoremove command
-        Err(PacMagicError::OperationNotSupported {
-            pm: "brew".to_string(),
-            op: "autoremove".to_string(),
-        })
+    fn autoremove(&self, options: &OperationOptions) -> Result<()> {
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
+        let mut cmd = self.build_command(options);
+
+        cmd.arg("autoremove");
+        cmd.args(&options.extra_flags);
+
+        executor.execute_interactive(cmd)
     }
 
     fn owns(&self, file_or_command: &str, options: &OperationOptions) -> Result<String> {
@@ -377,6 +381,6 @@ mod tests {
         let brew = Brew::new();
         assert!(brew.supports_operation(Operation::Install));
         assert!(brew.supports_operation(Operation::Search));
-        assert!(!brew.supports_operation(Operation::Autoremove));
+        assert!(brew.supports_operation(Operation::Autoremove));
     }
 }
