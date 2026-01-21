@@ -66,6 +66,7 @@ impl PackageManager for Brew {
                 | Operation::List
                 | Operation::Info
                 | Operation::Clean
+                | Operation::Files
                 | Operation::Check
                 | Operation::Autoremove
                 | Operation::Owns
@@ -294,7 +295,11 @@ impl PackageManager for Brew {
 
         let output = executor.execute_capture(cmd)?;
 
-        Ok(output.lines().map(|s| s.to_string()).collect())
+        Ok(output
+            .lines()
+            .filter(|line| !line.is_empty())
+            .map(|s| s.to_string())
+            .collect())
     }
 
     fn check(&self, options: &OperationOptions) -> Result<()> {
