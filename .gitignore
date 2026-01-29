@@ -2,7 +2,6 @@
 /target/
 **/*.rs.bk
 *.pdb
-Cargo.lock
 
 # IDEs
 .idea/
@@ -18,5 +17,3 @@ Cargo.lock
 
 # Config files (user-specific)
 pacmagic.local.toml
-
-
