@@ -131,7 +131,6 @@ impl PackageManager for Apt {
                 if to_install.is_empty() {
                     return Ok(());
                 }
-                cmd.arg("--skip-if-installed");
                 cmd.args(&to_install);
             }
             InstallBehavior::Upgrade | InstallBehavior::Default | InstallBehavior::Abort => {
