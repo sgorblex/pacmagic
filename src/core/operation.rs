@@ -258,6 +258,10 @@ pub struct OperationOptions {
 
     /// Force operation even if risky
     pub force: bool,
+
+    /// When true, pacman/paru use -Syu <packages> instead of -S (sync+upgrade+install in one)
+    #[doc(hidden)]
+    pub(crate) install_with_sync_upgrade: bool,
 }
 
 impl Default for OperationOptions {
@@ -271,6 +275,7 @@ impl Default for OperationOptions {
             install_behavior: InstallBehavior::Default,
             extra_flags: Vec::new(),
             force: false,
+            install_with_sync_upgrade: false,
         }
     }
 }

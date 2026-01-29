@@ -88,6 +88,12 @@ impl PackageManager for Paru {
                 }
             }
             if !already_installed.is_empty() {
+                if options.install_with_sync_upgrade {
+                    let mut sync_cmd = self.build_command(options);
+                    sync_cmd.arg("-Syu");
+                    sync_cmd.args(&options.extra_flags);
+                    executor.execute_interactive(sync_cmd)?;
+                }
                 return Err(crate::core::error::PacMagicError::ExecutionError(format!(
                     "Package(s) already installed: {}",
                     already_installed.join(", ")
@@ -96,11 +102,14 @@ impl PackageManager for Paru {
         }
 
         let mut cmd = self.build_command(options);
-        cmd.arg("-S");
+        if options.install_with_sync_upgrade {
+            cmd.arg("-Syu");
+        } else {
+            cmd.arg("-S");
+        }
 
         match options.install_behavior {
             InstallBehavior::Reinstall => {
-                cmd.arg("--overwrite");
                 cmd.args(packages);
             }
             InstallBehavior::Skip => {
@@ -123,6 +132,12 @@ impl PackageManager for Paru {
                     );
                 }
                 if to_install.is_empty() {
+                    if options.install_with_sync_upgrade {
+                        let mut sync_cmd = self.build_command(options);
+                        sync_cmd.arg("-Syu");
+                        sync_cmd.args(&options.extra_flags);
+                        executor.execute_interactive(sync_cmd)?;
+                    }
                     return Ok(());
                 }
                 cmd.arg("--needed");
@@ -213,9 +228,9 @@ impl PackageManager for Paru {
                     }
 
                     if i + 1 < lines.len() {
-                        let desc_line = lines[i + 1].trim();
-                        if !desc_line.is_empty() && !desc_line.starts_with("    ") {
-                            pkg.description = Some(desc_line.to_string());
+                        let desc_line = lines[i + 1];
+                        if !desc_line.trim().is_empty() && desc_line.starts_with("    ") {
+                            pkg.description = Some(desc_line.trim().to_string());
                         }
                     }
 

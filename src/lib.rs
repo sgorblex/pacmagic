@@ -66,7 +66,7 @@ impl PacMagic {
     fn handle_install_pre_update(
         &self,
         _packages: &[&str],
-        options: &OperationOptions,
+        options: &mut OperationOptions,
         pm: &dyn PackageManager,
     ) -> Result<()> {
         use InstallPreUpdateBehavior::*;
@@ -85,8 +85,14 @@ impl PacMagic {
 
         match effective_behavior {
             UpdateAndUpgrade => {
-                pm.update(options)?;
-                pm.upgrade_all(options)?;
+                let name = pm.name();
+                if name == "paru" || name == "pacman" {
+                    // Use -Syu <packages> in one shot instead of -Sy, -Syu, -S
+                    options.install_with_sync_upgrade = true;
+                } else {
+                    pm.update(options)?;
+                    pm.upgrade_all(options)?;
+                }
             }
             UpdateOnly => {
                 pm.update(options)?;
@@ -195,7 +201,7 @@ impl PacMagic {
         packages: &[&str],
         options: &OperationOptions,
     ) -> Result<()> {
-        let options = options.clone();
+        let mut options = options.clone();
         if !packages.is_empty() && operation != Operation::Search {
             core::validate_package_names(packages)?;
         }
@@ -211,7 +217,7 @@ impl PacMagic {
 
         match operation {
             Operation::Install => {
-                self.handle_install_pre_update(packages, &options, &*pm)?;
+                self.handle_install_pre_update(packages, &mut options, &*pm)?;
                 pm.install(packages, &options)
             }
             Operation::Remove => pm.remove(packages, &options),
