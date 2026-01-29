@@ -375,7 +375,11 @@ fn extract_unknown_args(args: &[String], _error: &clap::Error) -> Vec<String> {
 
         if arg.starts_with('-') && !in_command {
             unknown.push(arg.clone());
-            if arg.len() == 2 && i + 1 < args.len() && !args[i + 1].starts_with('-') {
+            if arg.len() == 2
+                && i + 1 < args.len()
+                && !args[i + 1].starts_with('-')
+                && !known_commands.contains(&args[i + 1].as_str())
+            {
                 i += 1;
                 unknown.push(args[i].clone());
             }
