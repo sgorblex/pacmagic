@@ -118,23 +118,22 @@ mod tests {
     #[test]
     fn test_registry_get_names() {
         let registry = AdapterRegistry::new();
-        let apt = registry.get("apt");
-        if apt.is_some() {
-            assert_eq!(apt.unwrap().name(), "apt");
-        }
+        let apt = registry
+            .get("apt")
+            .expect("apt adapter should be registered");
+        assert_eq!(apt.name(), "apt");
 
-        let pacman = registry.get("pacman");
-        if pacman.is_some() {
-            assert_eq!(pacman.unwrap().name(), "pacman");
-        }
+        let pacman = registry
+            .get("pacman")
+            .expect("pacman adapter should be registered");
+        assert_eq!(pacman.name(), "pacman");
     }
 
     #[test]
     fn test_registry_auto_detect() {
         let registry = AdapterRegistry::new();
         let result = registry.auto_detect();
-        if result.is_ok() {
-            let pm = result.unwrap();
+        if let Ok(pm) = result {
             assert!(!pm.name().is_empty());
             assert!(pm.is_available());
         }

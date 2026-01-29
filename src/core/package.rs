@@ -197,10 +197,12 @@ mod tests {
 
     #[test]
     fn test_package_metadata_serde() {
-        let mut metadata = PackageMetadata::default();
-        metadata.size = Some(1024);
-        metadata.architecture = Some("amd64".to_string());
-        metadata.dependencies = vec!["libc6".to_string()];
+        let metadata = PackageMetadata {
+            size: Some(1024),
+            architecture: Some("amd64".to_string()),
+            dependencies: vec!["libc6".to_string()],
+            ..Default::default()
+        };
 
         let json = serde_json::to_string(&metadata).unwrap();
         let parsed: PackageMetadata = serde_json::from_str(&json).unwrap();
