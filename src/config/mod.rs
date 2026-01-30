@@ -433,15 +433,17 @@ mod tests {
     #[test]
     fn test_config_get_package_manager_config() {
         let mut config = Config::default();
-        let mut pm_config = PackageManagerConfig::default();
-        pm_config.enabled = false;
-        pm_config.extra_flags = vec!["--test".to_string()];
+        let pm_config = PackageManagerConfig {
+            enabled: false,
+            extra_flags: vec!["--test".to_string()],
+            ..Default::default()
+        };
         config
             .package_managers
             .insert("apt".to_string(), pm_config.clone());
 
         let retrieved = config.get_package_manager_config("apt");
-        assert_eq!(retrieved.enabled, false);
+        assert!(!retrieved.enabled);
         assert_eq!(retrieved.extra_flags, vec!["--test".to_string()]);
 
         let default = config.get_package_manager_config("nonexistent");
@@ -521,16 +523,18 @@ mod tests {
         let parsed: Config = toml::from_str(&toml).unwrap();
 
         assert_eq!(parsed.general.default_package_manager, "pacman");
-        assert_eq!(parsed.general.verbose, true);
-        assert_eq!(parsed.general.confirm_before_install, false);
+        assert!(parsed.general.verbose);
+        assert!(!parsed.general.confirm_before_install);
     }
 
     #[test]
     fn test_config_package_manager_config_serialization() {
-        let mut pm_config = PackageManagerConfig::default();
-        pm_config.enabled = false;
-        pm_config.use_sudo = Some(false);
-        pm_config.extra_flags = vec!["--flag1".to_string(), "--flag2".to_string()];
+        let mut pm_config = PackageManagerConfig {
+            enabled: false,
+            use_sudo: Some(false),
+            extra_flags: vec!["--flag1".to_string(), "--flag2".to_string()],
+            ..Default::default()
+        };
         pm_config.extra.insert(
             "custom".to_string(),
             toml::Value::String("value".to_string()),
@@ -539,7 +543,7 @@ mod tests {
         let toml = toml::to_string(&pm_config).unwrap();
         let parsed: PackageManagerConfig = toml::from_str(&toml).unwrap();
 
-        assert_eq!(parsed.enabled, false);
+        assert!(!parsed.enabled);
         assert_eq!(parsed.use_sudo, Some(false));
         assert_eq!(parsed.extra_flags.len(), 2);
         assert_eq!(parsed.extra.get("custom").unwrap().as_str(), Some("value"));
@@ -613,6 +617,6 @@ mod tests {
 
         let loaded = Config::load_from(&config_path).unwrap();
         assert_eq!(loaded.general.default_package_manager, "apt");
-        assert_eq!(loaded.general.verbose, true);
+        assert!(loaded.general.verbose);
     }
 }
