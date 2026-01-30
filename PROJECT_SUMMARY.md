@@ -68,7 +68,9 @@ Rich error types with:
 ### Supported Package Managers (PoC)
 1. **APT** (Debian/Ubuntu) - Full implementation
 2. **Pacman** (Arch Linux) - Full implementation
-3. **Homebrew** (macOS) - Full implementation
+3. **Paru** (Arch Linux AUR helper) - Full implementation
+4. **Homebrew** (macOS) - Full implementation
+5. **Winget** (Windows) - Full implementation
 
 ### Supported Operations
 - Install/Remove packages
@@ -117,6 +119,8 @@ pacmagic/
 │   │   ├── apt.rs         # 300+ lines, full APT support
 │   │   ├── pacman.rs      # 350+ lines, full Pacman support
 │   │   ├── brew.rs        # 250+ lines, full Brew support
+│   │   ├── paru.rs        # Arch Linux AUR helper (paru)
+│   │   ├── winget.rs      # Windows Package Manager
 │   │   └── mod.rs         # Adapter registry
 │   ├── config/            # Configuration system
 │   ├── core/              # Core abstractions

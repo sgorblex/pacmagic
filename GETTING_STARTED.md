@@ -6,7 +6,7 @@ Welcome to PacMagic! This guide will help you understand the project structure a
 
 - Rust **1.82** or later (**MSRV**, see `rust-version` in `Cargo.toml`). Optional: [mise](https://mise.jdx.dev/) — `mise install` uses the (usually newer) Rust in `mise.toml` for local development; MSRV is still what `cargo` enforces as the minimum.
 - Cargo (comes with Rust)
-- A supported package manager (apt, pacman, brew, etc.) for testing
+- A supported package manager (apt, pacman, paru, brew, winget, etc.) for testing
 
 ## Installation
 
@@ -36,7 +36,9 @@ pacmagic/
 │   │   ├── mod.rs         # Adapter registry
 │   │   ├── apt.rs         # Debian/Ubuntu APT
 │   │   ├── pacman.rs      # Arch Linux pacman
-│   │   └── brew.rs        # macOS Homebrew
+│   │   ├── paru.rs        # Arch Linux AUR helper (paru)
+│   │   ├── brew.rs        # macOS Homebrew
+│   │   └── winget.rs      # Windows Package Manager
 │   ├── config/            # Configuration system
 │   │   └── mod.rs
 │   ├── core/              # Core abstractions
@@ -210,7 +212,7 @@ Then edit `~/.config/pacmagic/config.toml` (Linux) or `~/Library/Application Sup
 
 1. **Read** `ARCHITECTURE.md` for design principles
 2. **Explore** the code in `src/core/` to understand abstractions
-3. **Look at** existing adapters (apt, pacman, brew) as examples
+3. **Look at** existing adapters (apt, pacman, paru, brew, winget) as examples
 4. **Pick an issue** or feature to work on
 5. **Submit a PR** with your changes!
 
@@ -240,6 +242,7 @@ Some operations require sudo. Use `--yes` to skip confirmations or configure in 
   - [APT](https://manpages.ubuntu.com/manpages/jammy/man8/apt.8.html)
   - [Pacman](https://wiki.archlinux.org/title/Pacman)
   - [Homebrew](https://docs.brew.sh/)
+  - [Winget](https://learn.microsoft.com/windows/package-manager/winget/)
 
 ## Questions?
 

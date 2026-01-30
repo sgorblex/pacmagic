@@ -56,7 +56,7 @@ impl PacMagicError {
     pub fn help_text(&self) -> Option<&str> {
         match self {
             PacMagicError::NoPackageManagerFound => {
-                Some("No supported package manager was detected. Please install one (apt, pacman, brew, etc.)")
+                Some("No supported package manager was detected. Please install one (apt, pacman, paru, brew, winget, etc.)")
             }
             PacMagicError::PermissionDenied(_) => {
                 Some("Try running with elevated permissions (sudo) or check file permissions")

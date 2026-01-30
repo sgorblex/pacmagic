@@ -23,15 +23,23 @@ PacMagic uses a trait-based plugin architecture:
 │         Command Router & Config             │
 ├─────────────────────────────────────────────┤
 │         Core Traits & Abstractions          │
-├──────────┬──────────┬──────────┬────────────┤
-│   apt    │  pacman  │   brew   │   winget   │
-│ adapter  │ adapter  │  adapter │  adapter   │
-└──────────┴──────────┴──────────┴────────────┘
+├──────────┬──────────┬──────────┬──────────┬────────────┤
+│   apt    │  pacman  │   paru   │   brew   │   winget   │
+│ adapter  │ adapter  │ adapter  │  adapter │  adapter   │
+└──────────┴──────────┴──────────┴──────────┴────────────┘
 ```
 
 ## Status
 
 🚧 **Early Development** - This project is in the design and proof-of-concept phase.
+
+### Supported Package Managers (current)
+
+- **APT** (Debian/Ubuntu)
+- **Pacman** (Arch Linux)
+- **Paru** (Arch Linux AUR helper)
+- **Homebrew** (macOS)
+- **Winget** (Windows)
 
 ## Design Principles
 

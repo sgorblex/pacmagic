@@ -2,6 +2,7 @@ pub mod apt;
 pub mod brew;
 pub mod pacman;
 pub mod paru;
+pub mod winget;
 
 use crate::core::{PacMagicError, PackageManager, Result};
 use std::sync::Arc;
@@ -19,6 +20,7 @@ impl AdapterRegistry {
             Arc::new(pacman::Pacman::new()),
             Arc::new(paru::Paru::new()),
             Arc::new(brew::Brew::new()),
+            Arc::new(winget::Winget::new()),
         ];
 
         Self { adapters }
@@ -86,6 +88,7 @@ mod tests {
         assert!(registry.get("pacman").is_some());
         assert!(registry.get("paru").is_some());
         assert!(registry.get("brew").is_some());
+        assert!(registry.get("winget").is_some());
         assert!(registry.get("nonexistent").is_none());
     }
 
@@ -106,6 +109,7 @@ mod tests {
         assert!(names.contains(&"pacman"));
         assert!(names.contains(&"paru"));
         assert!(names.contains(&"brew"));
+        assert!(names.contains(&"winget"));
     }
 
     #[test]

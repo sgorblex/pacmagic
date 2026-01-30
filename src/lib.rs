@@ -159,12 +159,41 @@ impl PacMagic {
                     })
                     .unwrap_or(0)
             }
+            "winget" => {
+                let mut cmd = std::process::Command::new("winget");
+                cmd.arg("upgrade");
+                cmd.arg("--disable-interactivity");
+                cmd.arg("--accept-source-agreements");
+                if options.no_confirm {
+                    cmd.arg("--accept-package-agreements");
+                }
+                executor
+                    .execute_capture(cmd)
+                    .ok()
+                    .map(|output| Self::count_winget_upgrade_output(&output))
+                    .unwrap_or(0)
+            }
             _ => {
                 return Ok(0);
             }
         };
 
         Ok(count)
+    }
+
+    fn count_winget_upgrade_output(output: &str) -> usize {
+        crate::adapters::winget::parse_table_rows(output)
+            .into_iter()
+            .filter(|row| {
+                row.get("Id").is_some_and(|id| {
+                    !id.is_empty()
+                        && id.contains('.')
+                        && id
+                            .chars()
+                            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_'))
+                })
+            })
+            .count()
     }
 
     /// Prompt the user about upgrading packages
@@ -341,5 +370,26 @@ mod tests {
         if let Err(e) = result {
             assert!(matches!(e, PacMagicError::InvalidOperation(_)));
         }
+    }
+
+    #[test]
+    fn test_winget_upgrade_count_parsing() {
+        let output = r#"
+Name                Id                     Version     Available   Source
+---------------------------------------------------------------------------
+Git                 Git.Git                2.46.0      2.47.0      winget
+Bär                 Bar.Baz                1.0.0       1.1.0       winget
+
+Some footer/status line that should not be counted
+"#;
+
+        assert_eq!(PacMagic::count_winget_upgrade_output(output), 2);
+
+        let output_unicode_sep = r#"
+Name                Id                     Version     Available   Source
+───────────────────────────────────────────────────────────────────────────
+Foo                Foo.Bar                 3.0         3.1         winget
+"#;
+        assert_eq!(PacMagic::count_winget_upgrade_output(output_unicode_sep), 1);
     }
 }

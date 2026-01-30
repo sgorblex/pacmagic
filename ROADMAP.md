@@ -6,7 +6,7 @@ This document outlines the planned features and improvements for PacMagic.
 
 ✅ **Completed:**
 - Core trait-based architecture
-- Four package manager adapters (apt, pacman, brew, paru)
+- Five package manager adapters (apt, pacman, paru, brew, winget)
 - Configuration system with TOML
 - CLI interface with clap
 - Operation abstraction layer
@@ -22,7 +22,7 @@ This document outlines the planned features and improvements for PacMagic.
 - [ ] Zypper (openSUSE)
 - [ ] APK (Alpine Linux)
 - [ ] YUM (CentOS, older RHEL)
-- [ ] Winget (Windows)
+- [x] Winget (Windows)
 - [ ] Chocolatey (Windows)
 - [ ] PKG (FreeBSD)
 
