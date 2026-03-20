@@ -67,7 +67,7 @@ Rich error types with:
 
 ### Supported Package Managers (PoC)
 1. **APT** (Debian/Ubuntu) - Full implementation
-2. **Pacman** (Arch Linux) - Full implementation  
+2. **Pacman** (Arch Linux) - Full implementation
 3. **Homebrew** (macOS) - Full implementation
 
 ### Supported Operations
@@ -133,7 +133,7 @@ pacmagic/
 ├── CONTRIBUTING.md        # Contribution guidelines
 ├── ROADMAP.md            # Future plans
 ├── README.md             # User documentation
-└── dev.sh                # Development helper script
+└── mise.toml             # Development tasks (mise)
 ```
 
 ## How It Works
@@ -210,16 +210,21 @@ pacmagic/
    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
    ```
 
-2. **Build the project**
+2. **Optional — [mise](https://mise.jdx.dev/installing-mise.html)** Install mise, then in the repo use the Rust version from `mise.toml`:
    ```bash
-   cd /Users/acle/repo/pacmagic
-   ./dev.sh setup
+   cd pacmagic
+   mise install
    ```
+   If you skip mise, step 1’s rustup toolchain is enough; run `rustup component add rustfmt clippy` if `cargo fmt` / `cargo clippy` are missing.
 
-3. **Try it out**
+3. **Try it out** (from the repo root; with mise or plain Cargo)
    ```bash
-   ./dev.sh run -- detect
-   ./dev.sh run -- install --dry-run neovim
+   mise run dev -- detect
+   mise run dev -- install --dry-run neovim
+   ```
+   ```bash
+   cargo run --locked -- detect
+   cargo run --locked -- install --dry-run neovim
    ```
 
 4. **Read the docs**
@@ -293,7 +298,7 @@ By the end of your Rust learning journey with this project:
 ### PacMagic Specific
 - All documentation in this repo
 - GitHub issues for questions
-- `dev.sh` script for common tasks
+- `mise.toml` tasks for common development workflows
 
 ### Community
 - [Rust Users Forum](https://users.rust-lang.org/)
@@ -317,20 +322,20 @@ You have a **production-quality starting point** for:
 ## Quick Commands Cheat Sheet
 
 ```bash
-# Setup
-./dev.sh setup
+# Toolchain (versions from mise.toml)
+mise install
 
 # Development
-./dev.sh run -- detect              # Detect package manager
-./dev.sh run -- install --dry-run vim  # Test install
-./dev.sh test                        # Run tests
-./dev.sh lint                        # Check code quality
+mise run dev -- detect              # Detect package manager
+mise run dev -- install --dry-run vim  # Test install
+mise run test                        # Run tests
+mise run lint                        # Check code quality
 
-# Before committing
-./dev.sh all                         # Run all checks
+# Before committing (fmt-check, check, lint, test — see mise.toml)
+mise run all
 
 # Build release
-./dev.sh build                       # Creates optimized binary
+mise run build                       # Creates optimized binary
 ```
 
 ## Questions?
@@ -342,5 +347,3 @@ Check:
 4. Open an issue - Ask anything!
 
 **Welcome to PacMagic! Let's build something amazing together.** 🚀
-
-
