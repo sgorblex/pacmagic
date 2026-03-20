@@ -206,6 +206,11 @@ impl PacMagic {
             core::validate_package_names(packages)?;
         }
 
+        if operation == Operation::Search {
+            let query = packages.first().unwrap_or(&"");
+            core::validate_search_query(query)?;
+        }
+
         let pm = self.detect_package_manager()?;
 
         if !pm.supports_operation(operation) {
@@ -226,7 +231,6 @@ impl PacMagic {
             Operation::UpgradeAll => pm.upgrade_all(&options),
             Operation::Search => {
                 let query = packages.first().unwrap_or(&"");
-                core::validate_search_query(query)?;
                 let results = pm.search(query, &options)?;
                 for pkg in results {
                     println!("{} - {}", pkg.name, pkg.description.unwrap_or_default());
