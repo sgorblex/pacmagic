@@ -215,7 +215,7 @@ pacmagic/
    cd pacmagic
    mise install
    ```
-   If you skip mise, step 1’s rustup toolchain is enough; run `rustup component add rustfmt clippy` if `cargo fmt` / `cargo clippy` are missing.
+   If you skip mise, use a rustup toolchain that meets **at least** the MSRV in `Cargo.toml` (**1.82** at time of writing); run `rustup component add rustfmt clippy` if `cargo fmt` / `cargo clippy` are missing.
 
 3. **Try it out** (from the repo root; with mise or plain Cargo)
    ```bash
@@ -331,7 +331,7 @@ mise run dev -- install --dry-run vim  # Test install
 mise run test                        # Run tests
 mise run lint                        # Check code quality
 
-# Before committing (fmt-check, check, lint, test — see mise.toml)
+# Before committing (bundled checks — see mise.toml; needs cargo-deny + cargo-machete on PATH)
 mise run all
 
 # Build release

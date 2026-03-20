@@ -2,6 +2,7 @@
 name = "pacmagic"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.82"
 authors = ["sgorblex"]
 description = "A universal, extensible package manager wrapper"
 license = "MIT"
@@ -22,9 +23,6 @@ toml = "0.9"
 thiserror = "2.0"
 anyhow = "1.0"
 
-# Async runtime (for potential future use)
-tokio = { version = "1.35", features = ["full"], optional = true }
-
 # Process execution
 which = "8.0"
 
@@ -33,7 +31,6 @@ log = "0.4"
 env_logger = "0.11"
 
 # Platform detection
-cfg-if = "1.0"
 dirs = "6.0"
 
 # Shell command parsing for completions
@@ -42,10 +39,6 @@ shell-words = "1.1"
 [dev-dependencies]
 mockall = "0.13"
 tempfile = "3.8"
-
-[features]
-default = []
-async = ["tokio"]
 
 [[bin]]
 name = "pacmagic"
