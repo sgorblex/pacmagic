@@ -1,0 +1,43 @@
+[tools]
+rust = { version = "1.94.0", profile = "default" }
+
+[tasks.test]
+description = "Run tests"
+run = "cargo test --all-targets --all-features --locked"
+
+[tasks.lint]
+description = "Run clippy linter"
+run = "cargo clippy --all-targets --all-features --locked -- -D warnings"
+
+[tasks.format]
+alias = "fmt"
+description = "Format code with rustfmt"
+run = "cargo fmt --all"
+
+[tasks.fmt-check]
+description = "Check formatting with rustfmt (no changes)"
+run = "cargo fmt --all -- --check"
+
+[tasks.check]
+description = "Check code without building"
+run = "cargo check --all-targets --all-features --locked"
+
+[tasks.build]
+description = "Build release binary"
+run = "cargo build --release --locked"
+
+[tasks.dev]
+description = "Run PacMagic in dev mode"
+run = "cargo run --locked --"
+
+[tasks.clean]
+description = "Clean build artifacts"
+run = "cargo clean"
+
+[tasks.doc]
+description = "Build and open documentation"
+run = "cargo doc --locked --open --no-deps"
+
+[tasks.all]
+description = "Bundled checks: fmt-check, check, clippy, test"
+depends = ["fmt-check", "check", "lint", "test"]
