@@ -56,14 +56,17 @@ We're always looking to expand package manager support! Here's how:
 We follow standard Rust conventions:
 
 ```bash
-# Format code
-cargo fmt
+# Apply formatting (writes files)
+cargo fmt --all
 
-# Run linter
-cargo clippy
+# Verify formatting without modifying files
+cargo fmt --all -- --check
 
-# Fix common issues
-cargo clippy --fix
+# Linter
+cargo clippy --all-targets --all-features --locked -- -D warnings
+
+# Fix common clippy issues
+cargo clippy --all-targets --all-features --locked --fix
 ```
 
 **Guidelines:**
@@ -156,11 +159,11 @@ docs: update GETTING_STARTED with new examples
    git checkout -b feat/my-feature
    ```
 3. **Make** your changes
-4. **Test** thoroughly:
+4. **Test** thoroughly (or `mise install` then `mise run all` if you use mise — see `mise.toml`):
    ```bash
-   cargo test
-   cargo clippy
-   cargo fmt
+   cargo test --all-targets --all-features --locked
+   cargo clippy --all-targets --all-features --locked -- -D warnings
+   cargo fmt --all -- --check
    ```
 5. **Commit** with clear messages
 6. **Push** to your fork
@@ -185,6 +188,8 @@ docs: update GETTING_STARTED with new examples
 
 ### Prerequisites
 
+Minimum Rust **1.82** (see `rust-version` in `Cargo.toml`).
+
 ```bash
 # Install Rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -192,6 +197,8 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 # Install development tools
 rustup component add clippy rustfmt
 ```
+
+Optional: [mise](https://mise.jdx.dev/) reads `mise.toml` so `mise install` uses the repo-pinned Rust version. `mise run all` runs the bundled tasks defined there; put `cargo-deny` and `cargo-machete` on your `PATH` before running it.
 
 ### Local Development
 
@@ -201,10 +208,10 @@ git clone https://github.com/YOUR_USERNAME/pacmagic.git
 cd pacmagic
 
 # Build
-cargo build
+cargo build --locked
 
 # Run tests
-cargo test
+cargo test --all-targets --all-features --locked
 
 # Run locally
 cargo run -- --help
@@ -309,5 +316,3 @@ By contributing, you agree that your contributions will be licensed under the MI
 ---
 
 Thank you for contributing to PacMagic! 🪄
-
-

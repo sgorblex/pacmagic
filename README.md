@@ -151,18 +151,22 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 
 ### Development
 
+With [mise](https://mise.jdx.dev/):
+
 ```bash
-# Build
-cargo build
+mise install
+mise run all
+```
 
-# Run tests
-cargo test
+The `all` task runs the checks wired up in `mise.toml`. Have `cargo-deny` and `cargo-machete` on your `PATH` when you run `mise run all`, since that task invokes them.
 
-# Run clippy
-cargo clippy --all-targets --all-features
+Or with Cargo:
 
-# Format code
-cargo fmt
+```bash
+cargo build --locked
+cargo test --all-targets --all-features --locked
+cargo clippy --all-targets --all-features --locked -- -D warnings
+cargo fmt --all -- --check
 ```
 
 ## Comparison with Existing Tools

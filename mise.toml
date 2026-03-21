@@ -38,6 +38,19 @@ run = "cargo clean"
 description = "Build and open documentation"
 run = "cargo doc --locked --open --no-deps"
 
+[tasks.doc-check]
+description = "Check documentation builds without warnings"
+env = { RUSTDOCFLAGS = "-D warnings" }
+run = "cargo doc --no-deps --all-features --locked"
+
+[tasks.deny]
+description = "Check dependencies for vulnerabilities and license compliance"
+run = "cargo deny check advisories licenses sources bans"
+
+[tasks.machete]
+description = "Check for unused dependencies"
+run = "cargo machete"
+
 [tasks.all]
-description = "Bundled checks: fmt-check, check, clippy, test"
-depends = ["fmt-check", "check", "lint", "test"]
+description = "Bundled checks (fmt, clippy, test, deny, docs, machete)"
+depends = ["fmt-check", "lint", "test", "deny", "doc-check", "machete"]

@@ -259,7 +259,7 @@ pub struct OperationOptions {
     /// Force operation even if risky
     pub force: bool,
 
-    /// When true, pacman/paru use -Syu <packages> instead of -S (sync+upgrade+install in one)
+    /// When true, pacman/paru use `-Syu <packages>` instead of `-S` (sync+upgrade+install in one)
     #[doc(hidden)]
     pub(crate) install_with_sync_upgrade: bool,
 }
