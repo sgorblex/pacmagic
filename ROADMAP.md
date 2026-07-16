@@ -10,6 +10,7 @@ Completed:
 - Platform detection (OS, Linux distro, rolling-release detection)
 - Package-name/search-query validation (injection prevention)
 - Pre-update/upgrade policy for installs (`InstallPreUpdateBehavior`)
+- Automated releases via release-please: version bumping, `CHANGELOG.md`, GitHub Releases, and binary builds (see `CONTRIBUTING.md`)
 
 ## Next up: design & performance refactor
 
@@ -23,6 +24,7 @@ Following the existing adapter pattern documented in `CONTRIBUTING.md`:
 - [ ] Zypper adapter (openSUSE)
 - [ ] APK adapter (Alpine Linux)
 - [ ] PPA support in the APT adapter (`PackageManagerExt::add_repository`/`remove_repository`)
+- [ ] Publish to crates.io (`cargo publish` gated on release-please's `release_created`, once a `CARGO_REGISTRY_TOKEN` secret is configured)
 
 ## Contributing to the Roadmap
 
