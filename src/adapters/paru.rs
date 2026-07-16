@@ -88,12 +88,6 @@ impl PackageManager for Paru {
                 }
             }
             if !already_installed.is_empty() {
-                if options.install_with_sync_upgrade {
-                    let mut sync_cmd = self.build_command(options);
-                    sync_cmd.arg("-Syu");
-                    sync_cmd.args(&options.extra_flags);
-                    executor.execute_interactive(sync_cmd)?;
-                }
                 return Err(crate::core::error::PacMagicError::ExecutionError(format!(
                     "Package(s) already installed: {}",
                     already_installed.join(", ")
@@ -102,11 +96,7 @@ impl PackageManager for Paru {
         }
 
         let mut cmd = self.build_command(options);
-        if options.install_with_sync_upgrade {
-            cmd.arg("-Syu");
-        } else {
-            cmd.arg("-S");
-        }
+        cmd.arg("-S");
 
         match options.install_behavior {
             InstallBehavior::Reinstall => {
@@ -132,12 +122,6 @@ impl PackageManager for Paru {
                     );
                 }
                 if to_install.is_empty() {
-                    if options.install_with_sync_upgrade {
-                        let mut sync_cmd = self.build_command(options);
-                        sync_cmd.arg("-Syu");
-                        sync_cmd.args(&options.extra_flags);
-                        executor.execute_interactive(sync_cmd)?;
-                    }
                     return Ok(());
                 }
                 cmd.arg("--needed");
@@ -185,7 +169,7 @@ impl PackageManager for Paru {
             .with_show_commands(options.show_commands);
         let mut cmd = self.build_command(options);
 
-        cmd.arg("-Syu");
+        cmd.arg("-Su");
         cmd.args(&options.extra_flags);
 
         executor.execute_interactive(cmd)
