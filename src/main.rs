@@ -1,5 +1,8 @@
 use clap::{Parser, Subcommand, ValueEnum};
-use pacmagic::{Config, InstallBehavior, Operation, OperationOptions, PacMagic, PlatformDetector};
+use pacmagic::{
+    AdapterRegistry, Config, InstallBehavior, Operation, OperationOptions, PacMagic,
+    PlatformDetector,
+};
 use std::process;
 
 mod command_names;
@@ -540,8 +543,9 @@ fn run(cli: Cli, default_command_used: bool) -> pacmagic::Result<()> {
                 process::exit(1);
             }
 
-            let config = Config::default();
-            config.save()?;
+            let registry = AdapterRegistry::new();
+            let pm_names: Vec<&str> = registry.all().iter().map(|pm| pm.name()).collect();
+            Config::write_template_to(&config_path, &pm_names)?;
             println!("Configuration file created at: {}", config_path.display());
             println!("Edit this file to customize PacMagic behavior.");
         }
