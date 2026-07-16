@@ -188,7 +188,7 @@ docs: update GETTING_STARTED with new examples
 
 ### Prerequisites
 
-Minimum Rust **1.82** (see `rust-version` in `Cargo.toml`).
+Minimum Rust **1.85** (see `rust-version` in `Cargo.toml`).
 
 ```bash
 # Install Rust
