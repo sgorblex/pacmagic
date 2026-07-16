@@ -1,12 +1,76 @@
 # Contributing to PacMagic
 
-Thank you for your interest in contributing to PacMagic! This document provides guidelines and information for contributors.
+Thank you for your interest in contributing to PacMagic! This document covers everything you need to set up, develop, test, and submit changes.
 
 ## Code of Conduct
 
 - Be respectful and inclusive
 - Focus on constructive feedback
 - Help others learn and grow
+
+## Development Setup
+
+### Prerequisites
+
+- Rust **1.85** or later (**MSRV**, see `rust-version` in `Cargo.toml`).
+- A supported package manager (apt, pacman, paru, brew, winget) if you want to exercise real (non-dry-run) operations.
+
+Optional but recommended: [mise](https://mise.jdx.dev/) reads `mise.toml` and installs the repo-pinned Rust version, plus `cargo-deny` and `cargo-machete` (needed for `mise run all`):
+
+```bash
+mise install
+```
+
+If you skip mise, use any rustup toolchain meeting the MSRV above, run `rustup component add rustfmt clippy` if `cargo fmt`/`cargo clippy` are missing, and install `cargo-deny`/`cargo-machete` yourself if you want to run `mise run all`'s full check bundle.
+
+### Building
+
+```bash
+git clone https://github.com/YOUR_USERNAME/pacmagic.git
+cd pacmagic
+cargo build --locked          # or: mise run build (release profile)
+cargo run --locked -- --help
+```
+
+### Project Structure
+
+```
+pacmagic/
+├── src/
+│   ├── adapters/           # One file per package manager
+│   │   ├── mod.rs          # AdapterRegistry: built-in adapter list, auto-detection
+│   │   ├── apt.rs          # Debian/Ubuntu APT
+│   │   ├── pacman.rs       # Arch Linux pacman
+│   │   ├── paru.rs         # Arch Linux AUR helper (paru)
+│   │   ├── brew.rs         # macOS Homebrew
+│   │   └── winget.rs       # Windows Package Manager
+│   ├── config/mod.rs       # TOML config, command aliases, per-PM overrides
+│   ├── core/
+│   │   ├── traits.rs       # The PackageManager trait every adapter implements
+│   │   ├── operation.rs    # Operation enum, OperationOptions
+│   │   ├── package.rs      # Package type
+│   │   ├── error.rs        # PacMagicError
+│   │   ├── executor.rs     # CommandExecutor: dry-run/verbose-aware subprocess wrapper
+│   │   └── validation.rs   # Package name / search query validation (injection prevention)
+│   ├── platform/mod.rs     # OS/distro detection
+│   ├── command_names.rs    # Known CLI command names, used when parsing pass-through args
+│   ├── completion.rs       # Dynamic bash/fish/zsh shell completions
+│   ├── lib.rs              # Library entry point (the `PacMagic` struct)
+│   └── main.rs             # CLI entry point (clap)
+├── Cargo.toml
+├── ARCHITECTURE.md         # How the pieces fit together, and why
+├── ROADMAP.md
+└── CHANGELOG.md
+```
+
+### Quick Checks
+
+```bash
+cargo check --all-targets --all-features --locked   # fast syntax/type check
+cargo test --all-targets --all-features --locked    # run tests
+cargo run --locked -- detect                         # show detected package manager
+cargo run --locked -- install --dry-run neovim        # dry run, no side effects
+```
 
 ## How to Contribute
 
@@ -28,16 +92,75 @@ Thank you for your interest in contributing to PacMagic! This document provides 
 3. Explain how it fits PacMagic's goals
 4. Consider backward compatibility
 
-### Adding Package Managers
+### Adding a Package Manager
 
-We're always looking to expand package manager support! Here's how:
+1. **Research** the package manager's CLI interface.
+2. **Create** `src/adapters/<name>.rs`, implementing the `PackageManager` trait (see `src/core/traits.rs` for the full method list; `src/adapters/apt.rs` is a good reference implementation).
+3. **Register** it in `AdapterRegistry::new()` in `src/adapters/mod.rs`.
+4. **Set `priority()`** so auto-detection prefers the right adapter when multiple are available (see `ARCHITECTURE.md` for how APT/pacman/paru resolve this today).
+5. **Test** thoroughly with different operations, and add unit tests inline in the same file (see the `#[cfg(test)] mod tests` block at the bottom of any existing adapter for the pattern).
+6. **Document** any quirks or special behavior, and update the supported-package-managers list in `README.md`.
 
-1. **Research** the package manager's CLI interface
-2. **Create** a new adapter in `src/adapters/`
-3. **Implement** the `PackageManager` trait
-4. **Test** thoroughly with different operations
-5. **Document** any quirks or special behavior
-6. **Submit** a PR with tests
+Example skeleton, following the same shape as `src/adapters/apt.rs`:
+
+```rust
+// src/adapters/zypper.rs
+use crate::core::{CommandExecutor, Operation, OperationOptions, Package, PackageManager, Result};
+use std::process::Command;
+
+pub struct Zypper;
+
+impl Zypper {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for Zypper {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PackageManager for Zypper {
+    fn name(&self) -> &str {
+        "zypper"
+    }
+
+    fn command_names(&self) -> &[&str] {
+        &["zypper"]
+    }
+
+    fn is_available(&self) -> bool {
+        which::which("zypper").is_ok()
+    }
+
+    fn priority(&self) -> u8 {
+        50
+    }
+
+    fn supports_operation(&self, operation: Operation) -> bool {
+        matches!(
+            operation,
+            Operation::Install | Operation::Remove | Operation::Update | Operation::Search
+        )
+    }
+
+    fn install(&self, packages: &[&str], options: &OperationOptions) -> Result<()> {
+        let executor = CommandExecutor::new(options.dry_run, options.verbose)
+            .with_show_commands(options.show_commands);
+        let mut cmd = Command::new("zypper");
+        cmd.arg("install").args(packages);
+        if options.no_confirm {
+            cmd.arg("-y");
+        }
+        executor.execute_checked(cmd)
+    }
+
+    // ...implement the rest of PackageManager: remove, update, upgrade, upgrade_all,
+    // search, list_installed, info, clean, files, check, autoremove, owns.
+}
+```
 
 #### Package Manager Checklist
 
@@ -79,7 +202,7 @@ cargo clippy --all-targets --all-features --locked --fix
 
 ### Testing
 
-All new code should include tests:
+All new code should include tests. Every module keeps its unit tests inline, in a `#[cfg(test)] mod tests` block at the bottom of the same file — there is no separate `tests/` directory.
 
 ```rust
 #[cfg(test)]
@@ -93,10 +216,19 @@ mod tests {
 }
 ```
 
-**Test types:**
-- Unit tests in same file as code
-- Integration tests in `tests/` directory
-- Doc tests in documentation
+```bash
+cargo test --all-targets --all-features --locked                  # run everything
+cargo test --all-targets --all-features --locked adapters::apt    # scope to a module path
+cargo test --all-targets --all-features --locked -- --nocapture   # show test output
+```
+
+Since PacMagic shells out to real system package managers, manual testing matters too:
+
+```bash
+cargo run --locked -- install --dry-run neovim   # dry run, no side effects
+cargo run --locked -- search -v python            # verbose
+cargo run --locked -- detect                      # show detected package manager
+```
 
 ### Documentation
 
@@ -117,8 +249,9 @@ mod tests {
   }
   ```
 
-- Update README.md for user-facing changes
-- Update ARCHITECTURE.md for design changes
+- Update `README.md` for user-facing changes
+- Update `ARCHITECTURE.md` for design changes
+- Update `CHANGELOG.md` under `[Unreleased]` for any user-visible change
 
 ### Commit Messages
 
@@ -148,7 +281,7 @@ feat(adapters): add DNF package manager support
 fix(apt): correct package version parsing
 Fixes #123
 
-docs: update GETTING_STARTED with new examples
+docs: update CONTRIBUTING with new examples
 ```
 
 ### Pull Request Process
@@ -184,40 +317,7 @@ docs: update GETTING_STARTED with new examples
 3. Make requested changes
 4. Once approved, PR will be merged
 
-## Development Setup
-
-### Prerequisites
-
-Minimum Rust **1.85** (see `rust-version` in `Cargo.toml`).
-
-```bash
-# Install Rust
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# Install development tools
-rustup component add clippy rustfmt
-```
-
-Optional: [mise](https://mise.jdx.dev/) reads `mise.toml` so `mise install` uses the repo-pinned Rust version. `mise run all` runs the bundled tasks defined there; put `cargo-deny` and `cargo-machete` on your `PATH` before running it.
-
-### Local Development
-
-```bash
-# Clone your fork
-git clone https://github.com/YOUR_USERNAME/pacmagic.git
-cd pacmagic
-
-# Build
-cargo build --locked
-
-# Run tests
-cargo test --all-targets --all-features --locked
-
-# Run locally
-cargo run -- --help
-```
-
-### Debugging
+## Debugging
 
 ```bash
 # Enable debug logging
@@ -281,7 +381,7 @@ When implementing support for these, consider:
 ### Security
 
 - Never execute arbitrary user input
-- Validate package names
+- All package names and search queries must go through `core::validation` (see `ARCHITECTURE.md`) before reaching an adapter
 - Use `--no-confirm` carefully
 - Document security implications
 - Consider sandboxing for future features
@@ -292,6 +392,8 @@ When implementing support for these, consider:
 - Cache detection results when possible
 - Parallelize when safe
 - Profile before optimizing
+
+This area is a near-term focus — see `ROADMAP.md` for the planned design/performance refactor.
 
 ## Release Process
 
