@@ -235,20 +235,115 @@ impl Config {
 
     /// Save configuration to a specific path
     pub fn save_to(&self, path: &PathBuf) -> Result<()> {
+        Self::write_file(
+            path,
+            &toml::to_string_pretty(self).map_err(|e| {
+                PacMagicError::ConfigError(format!("Failed to serialize config: {}", e))
+            })?,
+        )
+    }
+
+    /// Write a fully-documented config template to a specific path.
+    ///
+    /// Every option is listed with a brief explanatory comment and commented
+    /// out at its default value (if it has one), so the user can uncomment a
+    /// line and set a value to override that default. `package_managers` is
+    /// the list of package-manager adapter names to document a section for
+    /// (e.g. from `AdapterRegistry::all()`).
+    pub fn write_template_to(path: &PathBuf, package_managers: &[&str]) -> Result<()> {
+        Self::write_file(path, &Self::template(package_managers))
+    }
+
+    fn write_file(path: &PathBuf, contents: &str) -> Result<()> {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).map_err(|e| {
                 PacMagicError::ConfigError(format!("Failed to create config directory: {}", e))
             })?;
         }
 
-        let contents = toml::to_string_pretty(self).map_err(|e| {
-            PacMagicError::ConfigError(format!("Failed to serialize config: {}", e))
-        })?;
-
         fs::write(path, contents)
             .map_err(|e| PacMagicError::ConfigError(format!("Failed to write config: {}", e)))?;
 
         Ok(())
+    }
+
+    /// Generate a fully-documented config template listing every available
+    /// option, commented out at its default value (if any) with a brief
+    /// explanation of what it does. Values are pulled from the same defaults
+    /// used by [`Config::default`], so the template can't drift from actual
+    /// behavior. Uncommenting a line and setting a value overrides that
+    /// default; anything left commented keeps behaving as if the file were
+    /// empty.
+    pub fn template(package_managers: &[&str]) -> String {
+        let mut out = String::new();
+
+        out.push_str("# PacMagic Configuration File\n");
+        out.push_str("#\n");
+        out.push_str("# Every setting below is shown commented out at its default value.\n");
+        out.push_str("# Uncomment a line and change its value to override that default.\n\n");
+
+        out.push_str("[general]\n");
+        out.push_str("# Package manager to use (\"auto\" to auto-detect the best one)\n");
+        out.push_str(&format!(
+            "# default_package_manager = \"{}\"\n\n",
+            default_package_manager()
+        ));
+        out.push_str("# Ask for confirmation before installing packages\n");
+        out.push_str("# confirm_before_install = true\n\n");
+        out.push_str("# Print extra output while running commands\n");
+        out.push_str("# verbose = false\n\n");
+        out.push_str("# Run privileged package manager commands with sudo\n");
+        out.push_str("# use_sudo = true\n\n");
+        out.push_str("# What to do when installing a package that is already installed\n");
+        out.push_str("# Options: default, upgrade, reinstall, skip, abort\n");
+        out.push_str(&format!(
+            "# install_behavior = \"{}\"\n\n",
+            default_install_behavior()
+        ));
+        out.push_str("# Whether to update/upgrade before installing packages\n");
+        out.push_str("# Options: default, update-and-upgrade, update-only, update-and-ask, none\n");
+        out.push_str(&format!(
+            "# install_pre_update_behavior = \"{}\"\n\n",
+            default_install_pre_update_behavior()
+        ));
+        out.push_str(
+            "# Command to run when pacmagic is invoked with no arguments (unset by default)\n",
+        );
+        out.push_str("# default_command = \"full-upgrade\"\n\n");
+
+        out.push_str("# Command aliases: map short commands to operations, or to a list of\n");
+        out.push_str("# operations to run in sequence for multi-command aliases. The defaults\n");
+        out.push_str("# below are always merged in automatically, so you only need to uncomment\n");
+        out.push_str("# an entry to change it, or add a new line for a brand new alias.\n");
+        out.push_str("[aliases]\n");
+        for op in Operation::all() {
+            for alias in op.default_aliases() {
+                out.push_str(&format!("# {} = \"{}\"\n", alias, op));
+            }
+        }
+        out.push_str(
+            "\n# Multi-command aliases run several operations in sequence. This overrides\n",
+        );
+        out.push_str("# the single-operation \"full-upgrade\" default alias above, e.g.:\n");
+        out.push_str("# full-upgrade = [\"update\", \"upgrade-all\", \"autoremove\", \"clean\"]\n");
+
+        out.push_str(
+            "\n# Package-manager-specific overrides. Uncomment the keys under a section\n",
+        );
+        out.push_str("# for the package manager(s) you want to customize.\n");
+        for pm in package_managers {
+            out.push_str(&format!("\n[package_managers.{}]\n", pm));
+            out.push_str("# Consider this package manager when auto-detecting\n");
+            out.push_str("# enabled = true\n\n");
+            out.push_str(
+                "# Use sudo for this package manager (defaults to general.use_sudo if unset)\n",
+            );
+            out.push_str("# use_sudo = true\n\n");
+            out.push_str("# Extra flags always passed to this package manager's commands\n");
+            out.push_str("# extra_flags = []\n");
+        }
+
+        out
     }
 
     /// Get the default configuration path
@@ -618,5 +713,88 @@ mod tests {
         let loaded = Config::load_from(&config_path).unwrap();
         assert_eq!(loaded.general.default_package_manager, "apt");
         assert!(loaded.general.verbose);
+    }
+
+    #[test]
+    fn test_template_is_valid_toml_and_all_commented_out() {
+        let template = Config::template(&["apt", "pacman"]);
+
+        // Every non-comment, non-blank, non-header line must be a comment:
+        // the whole point is that nothing overrides a default until the
+        // user uncomments it.
+        for line in template.lines() {
+            let trimmed = line.trim();
+            if trimmed.is_empty() || trimmed.starts_with('#') || trimmed.starts_with('[') {
+                continue;
+            }
+            panic!("expected every option line to be commented out, found: {trimmed}");
+        }
+
+        // With every option line commented out, only the section headers
+        // are active, so parsing yields defaults everywhere: behaviorally
+        // equivalent to no config file at all.
+        let parsed: Config = toml::from_str(&template).unwrap();
+        let defaults = Config::default();
+        assert_eq!(
+            parsed.general.default_package_manager,
+            defaults.general.default_package_manager
+        );
+        assert_eq!(
+            parsed.general.confirm_before_install,
+            defaults.general.confirm_before_install
+        );
+        assert!(parsed.aliases.is_empty());
+        assert_eq!(parsed.package_managers.len(), 2);
+        assert!(parsed.get_package_manager_config("apt").enabled);
+        assert!(parsed
+            .get_package_manager_config("pacman")
+            .use_sudo
+            .is_none());
+    }
+
+    #[test]
+    fn test_template_documents_every_alias_and_operation() {
+        let template = Config::template(&[]);
+
+        for op in Operation::all() {
+            for alias in op.default_aliases() {
+                assert!(
+                    template.contains(&format!("# {} = \"{}\"", alias, op)),
+                    "template is missing documented default alias `{alias}`"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_template_defaults_match_config_default() {
+        let template = Config::template(&[]);
+        let defaults = Config::default();
+
+        assert!(template.contains(&format!(
+            "# default_package_manager = \"{}\"",
+            defaults.general.default_package_manager
+        )));
+        assert!(template.contains(&format!(
+            "# install_behavior = \"{}\"",
+            defaults.general.install_behavior
+        )));
+        assert!(template.contains(&format!(
+            "# install_pre_update_behavior = \"{}\"",
+            defaults.general.install_pre_update_behavior
+        )));
+    }
+
+    #[test]
+    fn test_write_template_to_creates_parent_and_file() {
+        use tempfile::TempDir;
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("nested").join("config.toml");
+
+        Config::write_template_to(&config_path, &["apt"]).unwrap();
+
+        let contents = fs::read_to_string(&config_path).unwrap();
+        assert!(contents.contains("[package_managers.apt]"));
+        toml::from_str::<toml::Value>(&contents).unwrap();
     }
 }
