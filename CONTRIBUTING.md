@@ -284,6 +284,8 @@ Fixes #123
 docs: update CONTRIBUTING with new examples
 ```
 
+These aren't just style — commit types on `main` directly drive [release-please](https://github.com/googleapis/release-please)'s version bumps and `CHANGELOG.md` entries (see Release Process below). `feat:` bumps the minor version and appears under "Features"; `fix:` bumps patch and appears under "Bug Fixes"; a `!` after the type or a `BREAKING CHANGE:` footer bumps the major version (or minor, while pre-1.0). Other types (`chore`, `docs`, `style`, `refactor`, `test`, `build`, `ci`) don't bump the version and are omitted from the changelog unless they contain a breaking-change marker.
+
 ### Pull Request Process
 
 1. **Fork** the repository
@@ -399,11 +401,14 @@ This area is a near-term focus — see `ROADMAP.md` for the planned design/perfo
 
 (For maintainers)
 
-1. Update version in `Cargo.toml`
-2. Update `CHANGELOG.md`
-3. Create git tag: `git tag v0.x.0`
-4. Push tag: `git push --tags`
-5. GitHub Actions will build and publish
+Releases are automated by [release-please](https://github.com/googleapis/release-please) (`.github/workflows/release-please.yml`), driven entirely by Conventional Commits merged to `main` — there's no manual version bumping or tagging:
+
+1. Every push to `main` with releasable commits (`feat`, `fix`, or a breaking change) since the last release makes release-please open or update a "release PR" that bumps `Cargo.toml`'s `version`, updates `Cargo.lock`, and rewrites `CHANGELOG.md`.
+2. Review and merge that PR when you're ready to cut a release.
+3. On merge, release-please creates the git tag and GitHub Release (with the changelog as the release body); the same workflow then builds release binaries for Linux/macOS/Windows and attaches them to that release.
+4. Config lives in `release-please-config.json` / `.release-please-manifest.json` at the repo root.
+
+Not published to crates.io yet — see `ROADMAP.md`. To rebuild/re-upload binaries for an existing tag without cutting a new release (e.g. after a failed build), run the workflow manually via `workflow_dispatch` with the existing tag.
 
 ## Questions?
 

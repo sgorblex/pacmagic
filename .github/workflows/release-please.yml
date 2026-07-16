@@ -1,32 +1,51 @@
-name: Release
+name: Release Please
 
 on:
   push:
-    tags:
-      - "v*"
+    branches: [main]
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag to release (e.g. v0.1.0)"
+        description: "Existing release tag to (re)build and upload binary assets for, bypassing release-please (e.g. v0.2.0)"
         required: true
         type: string
 
 env:
   CARGO_TERM_COLOR: always
-  RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
 
 jobs:
+  release-please:
+    name: Release Please
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release
+        # release-type, bootstrap-sha, and package config all live in
+        # release-please-config.json / .release-please-manifest.json (default paths)
+
   build:
     name: Build (${{ matrix.os }})
+    needs: release-please
+    if: |
+      !cancelled() &&
+      (needs.release-please.result == 'skipped' || needs.release-please.outputs.release_created == 'true')
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-
+    env:
+      RELEASE_TAG: ${{ needs.release-please.outputs.tag_name || inputs.tag }}
     permissions:
       contents: read
-
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
@@ -76,13 +95,11 @@ jobs:
           if-no-files-found: error
 
   publish:
-    name: Publish GitHub Release
+    name: Attach binaries to GitHub Release
+    needs: [release-please, build]
     runs-on: ubuntu-latest
-    needs: build
-
     permissions:
       contents: write
-
     steps:
       - name: Download build artifacts
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
@@ -91,11 +108,10 @@ jobs:
           pattern: dist-*
           merge-multiple: true
 
-      - name: Create GitHub Release
+      - name: Upload assets to the release
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         with:
-          tag_name: ${{ env.RELEASE_TAG }}
-          generate_release_notes: true
+          tag_name: ${{ needs.release-please.outputs.tag_name || inputs.tag }}
           files: |
             dist/**/*.tar.gz
             dist/**/*.zip
