@@ -155,27 +155,7 @@ pacmagic completions zsh > ~/.oh-my-zsh/completions/_pacmagic
 
 ## Contributing
 
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-### Development
-
-With [mise](https://mise.jdx.dev/):
-
-```bash
-mise install
-mise run all
-```
-
-The `all` task runs the checks wired up in `mise.toml`. Have `cargo-deny` and `cargo-machete` on your `PATH` when you run `mise run all`, since that task invokes them.
-
-Or with Cargo:
-
-```bash
-cargo build --locked
-cargo test --all-targets --all-features --locked
-cargo clippy --all-targets --all-features --locked -- -D warnings
-cargo fmt --all -- --check
-```
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, testing, and PR process, and [ARCHITECTURE.md](ARCHITECTURE.md) for how the codebase is put together.
 
 ## Comparison with Existing Tools
 

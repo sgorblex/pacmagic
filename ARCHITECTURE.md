@@ -5,137 +5,145 @@
 PacMagic is built around three core principles:
 
 1. **Separation of Concerns**: Clear boundaries between package manager implementations, core logic, and user interfaces
-2. **Extensibility Through Traits**: New package managers are added by implementing well-defined traits
+2. **Extensibility Through Traits**: New package managers are added by implementing a well-defined trait
 3. **Configuration Over Convention**: Users can customize behavior without modifying code
+
+### Why these choices
+
+- **Rust**: memory safety without a garbage collector, a strong type system that catches integration errors (e.g. a missing adapter method) at compile time, and first-class cross-platform support (Linux/macOS/Windows) via `std::process::Command`.
+- **Trait-based adapters over shell scripts**: a shell wrapper around each package manager would be faster to write but gives up compile-time completeness checks, structured error handling, and a reusable library API — PacMagic is both a CLI and a `pacmagic` crate.
+- **TOML config**: human-editable, the standard choice in the Rust ecosystem, and maps cleanly onto `serde`.
 
 ## Core Components
 
 ### 1. Package Manager Trait (`PackageManager`)
 
-The foundation of the system. Every package manager adapter implements this trait:
+The foundation of the system, defined in `src/core/traits.rs`. Every package manager adapter implements this trait:
 
 ```rust
-trait PackageManager {
+pub trait PackageManager: Send + Sync {
     fn name(&self) -> &str;
+    fn command_names(&self) -> &[&str];
     fn is_available(&self) -> bool;
-    fn install(&self, packages: &[&str], options: &Options) -> Result<()>;
-    fn remove(&self, packages: &[&str], options: &Options) -> Result<()>;
-    fn update(&self, packages: &[&str], options: &Options) -> Result<()>;
-    fn search(&self, query: &str, options: &Options) -> Result<Vec<Package>>;
-    fn list_installed(&self, options: &Options) -> Result<Vec<Package>>;
-    // ... more operations
+    fn priority(&self) -> u8 { 50 } // higher = preferred when multiple are available
+    fn supports_operation(&self, operation: Operation) -> bool;
+
+    fn install(&self, packages: &[&str], options: &OperationOptions) -> Result<()>;
+    fn remove(&self, packages: &[&str], options: &OperationOptions) -> Result<()>;
+    fn update(&self, options: &OperationOptions) -> Result<()>;
+    fn upgrade(&self, packages: &[&str], options: &OperationOptions) -> Result<()>;
+    fn upgrade_all(&self, options: &OperationOptions) -> Result<()>;
+    fn search(&self, query: &str, options: &OperationOptions) -> Result<Vec<Package>>;
+    fn list_installed(&self, options: &OperationOptions) -> Result<Vec<Package>>;
+    fn info(&self, package: &str, options: &OperationOptions) -> Result<Package>;
+    fn clean(&self, options: &OperationOptions) -> Result<()>;
+    fn files(&self, package: &str, options: &OperationOptions) -> Result<Vec<String>>;
+    fn check(&self, options: &OperationOptions) -> Result<()>;
+    fn autoremove(&self, options: &OperationOptions) -> Result<()>;
+    fn owns(&self, file_or_command: &str, options: &OperationOptions) -> Result<String>;
 }
 ```
+
+An extension trait, `PackageManagerExt`, adds optional repository operations (`add_repository`/`remove_repository`/`list_repositories`) with a blanket default implementation that returns `OperationNotSupported` — adapters only override what they actually need.
 
 ### 2. Operation System
 
-Operations are first-class concepts:
+Operations are first-class values, defined in `src/core/operation.rs`:
 
 ```rust
-enum Operation {
-    Install,
-    Remove,
-    Update,
-    Upgrade,    // Update all packages
-    Search,
-    List,
-    Info,
-    Clean,
+pub enum Operation {
+    Install, Remove, Update, Upgrade, UpgradeAll,
+    Search, List, Info, Clean, Files, Check, Autoremove, Owns,
 }
 ```
 
-Each operation can have modifiers (options) that affect behavior.
+Each `Operation` carries its own default CLI aliases (e.g. `install`/`i`/`add`) via `default_aliases()`, which is also how `Config`'s user-defined aliases are validated and resolved.
+
+`OperationOptions` carries the modifiers that affect behavior across all adapters: `no_confirm`, `use_sudo`, `verbose`, `dry_run`, `show_commands`, `install_behavior`, `extra_flags`, `force`. Two enums tune install semantics further:
+- `InstallBehavior` — what to do if a package is already installed (`Upgrade`/`Reinstall`/`Skip`/`Abort`/`Default`)
+- `InstallPreUpdateBehavior` — whether to update/upgrade before an install (`UpdateAndUpgrade`/`UpdateOnly`/`UpdateAndAsk`/`None`/`Default`, where `Default` means "update+upgrade only on rolling releases", decided via `PlatformDetector::is_rolling_release()`)
 
 ### 3. Adapter Pattern
 
-Each package manager has an adapter:
+Each package manager has an adapter, one file per manager:
 
 ```
 src/adapters/
-├── mod.rs          # Registry and common utilities
+├── mod.rs          # AdapterRegistry: built-in adapter list, lookup, auto-detection
 ├── apt.rs          # Debian/Ubuntu apt
 ├── pacman.rs       # Arch Linux pacman
 ├── paru.rs         # Arch Linux AUR helper (paru)
 ├── brew.rs         # macOS Homebrew
-├── dnf.rs          # Fedora DNF
-├── winget.rs       # Windows Package Manager
-└── ...
+└── winget.rs       # Windows Package Manager
 ```
+
+Adapters are unit structs (`pub struct Apt;`) — no per-instance state. Each method builds a `std::process::Command` and runs it through a `CommandExecutor` (see below), never `Command::output()`/`status()` directly.
 
 ### 4. Configuration Layer
 
-User preferences are stored in TOML:
+User preferences live in TOML, loaded by `src/config/mod.rs`:
 
 ```toml
 [general]
 default_package_manager = "auto"  # or specific: "apt", "pacman", etc.
 confirm_before_install = true
-parallel_downloads = true
+install_behavior = "default"
+install_pre_update_behavior = "default"
 
 [aliases]
-# Map user commands to operations
 i = "install"
 rm = "remove"
-up = "update"
-upg = "upgrade"
-s = "search"
+sync = ["update", "upgrade-all"]  # multi-command aliases run sequentially
 
 [package_managers.apt]
 enabled = true
 use_sudo = true
 extra_flags = ["--yes"]
-
-[package_managers.pacman]
-enabled = true
-use_sudo = true
-extra_flags = []
-
-[package_managers.paru]
-enabled = true
-use_sudo = true
-extra_flags = []
 ```
+
+Default aliases (from `Operation::default_aliases()`) are always merged in on load, so user config only needs to add or override entries. See `config.example.toml` for the full schema.
 
 ### 5. Command Router
 
-The router maps user input to operations:
+`PacMagic::execute()` in `src/lib.rs` is the single entry point used by both the CLI and library consumers:
 
-1. Parse CLI arguments (or API call)
-2. Load configuration
-3. Resolve aliases
-4. Detect or select package manager
-5. Execute operation through adapter
-6. Return result or error
+1. Validate package names / search query (`core::validation`) — this is the injection-prevention boundary, since adapters shell out to real package managers, and it runs before any adapter sees the input.
+2. Resolve the active `PackageManager` via `AdapterRegistry` (explicit `-p/--package-manager` flag or config, else highest-`priority()` available adapter).
+3. Confirm the adapter `supports_operation()` the requested `Operation`.
+4. For `Install`, first run the pre-update/upgrade policy (`handle_install_pre_update`), then dispatch to the adapter method matching the `Operation` variant.
+
+`main.rs` additionally handles: CLI alias resolution (including multi-command aliases run sequentially), a default-command-when-no-args flow, and a fallback re-parse path that lets unrecognized flags pass through to the underlying package manager via `--pm-args`/trailing `--`.
 
 ### 6. Platform Detection
 
-Automatic detection of available package managers:
-
-```rust
-pub struct PlatformDetector {
-    // Detects OS, available package managers, etc.
-}
-```
+`src/platform/mod.rs`'s `PlatformDetector` detects OS and (on Linux) distro from `/etc/*-release` files, maps distro → recommended package manager, and exposes `is_rolling_release()` (Arch/Gentoo/openSUSE Tumbleweed/Debian unstable/Fedora Rawhide).
 
 Priority order when multiple package managers are available:
 1. User-specified in config
-2. User-specified via CLI flag
-3. Auto-detect based on platform conventions
+2. User-specified via CLI flag (`-p`)
+3. Auto-detect based on each adapter's `priority()`
 
 ### 7. Error Handling
 
-Clear error hierarchy:
+Defined in `src/core/error.rs` (via `thiserror`):
 
 ```rust
-enum PacMagicError {
-    PackageManagerNotFound,
+pub enum PacMagicError {
+    NoPackageManagerFound,
     PackageManagerNotAvailable(String),
-    OperationNotSupported { pm: String, op: Operation },
-    ExecutionError { pm: String, details: String },
+    OperationNotSupported { pm: String, op: String },
+    ExecutionError(String),
     ConfigError(String),
-    // ...
+    InvalidOperation(String),
+    PackageNotFound(String),
+    PermissionDenied(String),
+    IoError(#[from] std::io::Error),
+    SerializationError(#[from] serde_json::Error),
+    Other(#[from] anyhow::Error),
 }
 ```
+
+`is_recoverable()` flags errors like `PackageNotFound`/`OperationNotSupported` as non-fatal; `is_command_failure()` lets `main.rs` avoid re-printing an error when the underlying command already wrote to stderr; `help_text()` attaches a user-facing suggestion for the common cases.
 
 ## Data Flow
 
@@ -144,71 +152,35 @@ enum PacMagicError {
 ```
 User: `pacmagic install neovim`
   ↓
-CLI Parser: Parse command + flags
+CLI Parser (main.rs): parse command + flags, resolve aliases via Config
   ↓
-Config Loader: Load user preferences & aliases
+core::validation: reject invalid/shell-metacharacter package names
   ↓
-Command Router: Resolve "install" → Operation::Install
+AdapterRegistry: resolve the active PackageManager (config/flag/auto-detect by priority)
   ↓
-PM Detector: Detect available package manager (e.g., apt)
+PacMagic::execute: pre-update/upgrade policy, then supports_operation() check
   ↓
-Adapter (apt): Translate to "sudo apt install neovim -y"
+Adapter (apt): build a std::process::Command, e.g. "sudo apt install neovim -y"
   ↓
-Executor: Run command, capture output
+CommandExecutor: run it (or print it, in --dry-run), capture output
   ↓
-Result Handler: Format output, handle errors
+Result Handler: format output, map failures to PacMagicError
   ↓
-User: See results
+User: sees results
 ```
 
 ## Extension Points
 
 ### Adding a New Package Manager
 
-1. Create new file in `src/adapters/`
-2. Implement `PackageManager` trait
-3. Register in `src/adapters/mod.rs`
-4. Add tests
-5. Update documentation
-
-Example:
-
-```rust
-// src/adapters/zypper.rs
-pub struct Zypper;
-
-impl PackageManager for Zypper {
-    fn name(&self) -> &str {
-        "zypper"
-    }
-    
-    fn is_available(&self) -> bool {
-        which::which("zypper").is_ok()
-    }
-    
-    fn install(&self, packages: &[&str], options: &Options) -> Result<()> {
-        let mut cmd = Command::new("sudo");
-        cmd.arg("zypper").arg("install");
-        
-        if options.no_confirm {
-            cmd.arg("-y");
-        }
-        
-        cmd.args(packages);
-        
-        execute_command(cmd)
-    }
-    
-    // ... implement other methods
-}
-```
+See `CONTRIBUTING.md`'s "Adding a Package Manager" section for the concrete steps and a code skeleton.
 
 ### Adding a New Operation
 
-1. Add variant to `Operation` enum
-2. Add method to `PackageManager` trait
-3. Implement in all adapters (return `Err(OperationNotSupported)` if not available)
-4. Update command parser
+1. Add a variant to the `Operation` enum in `src/core/operation.rs`, with default aliases
+2. Add the corresponding method to the `PackageManager` trait in `src/core/traits.rs`
+3. Implement it in every adapter (or return `Err(OperationNotSupported)` where not applicable)
+4. Wire it into the CLI in `src/main.rs`
 5. Add tests
 
 ## Special Cases
@@ -216,41 +188,29 @@ impl PackageManager for Zypper {
 ### AUR (Arch User Repository)
 
 AUR helpers are implemented as separate package manager adapters:
-- Each helper (paru, yay, etc.) has its own adapter implementing `PackageManager`
-- Paru adapter has higher priority (100) than pacman (95) on Arch Linux
-- This allows users to explicitly choose: `pacmagic -p paru install package` vs `pacmagic -p pacman install package`
-- Auto-detection will prefer paru when available, as it can handle both official repos and AUR
+- Each helper (currently paru) has its own adapter implementing `PackageManager`
+- Paru's adapter has higher priority than pacman's, so auto-detection prefers it when available (it can handle both official repos and AUR)
+- Users can still choose explicitly: `pacmagic -p paru install package` vs `pacmagic -p pacman install package`
 
 ### PPAs (Personal Package Archives)
 
-APT adapter has special handling:
-- `add-ppa` operation → `add-apt-repository`
-- `remove-ppa` operation → remove from sources
-- Automatic `apt update` after PPA changes
+Not yet implemented; the extension point is `PackageManagerExt::add_repository`/`remove_repository`/`list_repositories`, which the APT adapter is the natural candidate to override.
 
 ### Flatpak/Snap/AppImage
 
-These are additional package managers that can be enabled:
-- Separate adapters
-- Can coexist with system package manager
-- Priority controlled via config
+Not yet implemented; these would be additional adapters that can coexist with the system package manager, with priority controlled via config, same as any other adapter.
 
-## Future Considerations
+## Current Characteristics
 
-1. **Parallel Operations**: Install multiple packages concurrently
-2. **Transaction System**: Rollback on failure
-3. **Dependency Resolution**: Show dependency tree before install
-4. **Package Source Priority**: Prefer certain sources (e.g., native > flatpak)
-5. **Plugin API**: External plugins via dynamic loading
-6. **GUI/TUI**: Build alternative interfaces using the library
-7. **Remote Management**: Manage packages on remote systems
-8. **Package Sets**: Define and install groups of packages
+An honest snapshot of the architecture as built today, kept here as the baseline for the planned design/performance refactor (see `ROADMAP.md`):
+
+- **Synchronous, one subprocess per call**: every adapter method blocks on a single `std::process::Command` via `CommandExecutor`; there's no async runtime and no batching of multiple operations into one underlying invocation.
+- **No caching**: `is_available()`/`priority()`/detection results are recomputed on every run; nothing is memoized across a single `pacmagic` invocation or between invocations.
+- **Adapters are hardcoded**: `AdapterRegistry::new()` in `src/adapters/mod.rs` lists all built-in adapters directly; there is no dynamic plugin loading (`AdapterRegistry::register()` exists for library consumers to add their own at runtime, but nothing in the CLI uses it).
+- **Sequential multi-command aliases**: alias sequences like `sync = ["update", "upgrade-all"]` run one operation after another in `main.rs`, not as a single combined package manager invocation (pacman/paru's `install` path already special-cases `-Syu <packages>` to avoid this — see `handle_install_pre_update` in `src/lib.rs` — but this optimization isn't generalized).
 
 ## Testing Strategy
 
-1. **Unit Tests**: Test each adapter independently with mocked commands
-2. **Integration Tests**: Test command routing and config loading
-3. **Platform Tests**: CI tests on different OSes (Linux, macOS, Windows)
-4. **Mock Package Managers**: Create fake package managers for testing
-
-
+1. **Unit Tests**: Each module's `#[cfg(test)] mod tests` block tests its logic in isolation, including adapters (command construction, output parsing) and validation (injection-prevention edge cases).
+2. **Mock Package Managers**: `mockall` is available as a dev-dependency, and `AdapterRegistry::register()`/the `PackageManager` trait make it straightforward to substitute a fake adapter in tests (see `test_registry_register` in `src/adapters/mod.rs` for the pattern).
+3. **Platform Tests**: CI (`.github/workflows/ci.yml`) runs the test suite on Linux, macOS, and Windows.
