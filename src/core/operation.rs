@@ -176,19 +176,19 @@ impl Operation {
     /// Returns common aliases for this operation
     pub fn default_aliases(&self) -> &[&str] {
         match self {
-            Operation::Install => &["install", "i", "add"],
-            Operation::Remove => &["remove", "rm", "uninstall"],
-            Operation::Update => &["update", "up"],
-            Operation::Upgrade => &["upgrade", "upg"],
-            Operation::UpgradeAll => &["upgrade-all", "full-upgrade"],
-            Operation::Search => &["search", "s", "find"],
-            Operation::List => &["list", "ls"],
-            Operation::Info => &["info", "show"],
-            Operation::Clean => &["clean", "cleanup"],
-            Operation::Files => &["files", "ls-files"],
-            Operation::Check => &["check", "verify"],
-            Operation::Autoremove => &["autoremove", "auto-remove"],
-            Operation::Owns => &["owns", "owner", "which-package"],
+            Operation::Install => &["install"],
+            Operation::Remove => &["remove"],
+            Operation::Update => &["update"],
+            Operation::Upgrade => &["upgrade"],
+            Operation::UpgradeAll => &["upgrade-all"],
+            Operation::Search => &["search"],
+            Operation::List => &["list"],
+            Operation::Info => &["info"],
+            Operation::Clean => &["clean"],
+            Operation::Files => &["files"],
+            Operation::Check => &["check"],
+            Operation::Autoremove => &["autoremove"],
+            Operation::Owns => &["owns"],
         }
     }
 
@@ -457,57 +457,29 @@ mod tests {
 
         #[test]
         fn test_operation_default_aliases() {
-            assert_eq!(
-                Operation::Install.default_aliases(),
-                &["install", "i", "add"]
-            );
-            assert_eq!(
-                Operation::Remove.default_aliases(),
-                &["remove", "rm", "uninstall"]
-            );
-            assert_eq!(Operation::Update.default_aliases(), &["update", "up"]);
-            assert_eq!(Operation::Upgrade.default_aliases(), &["upgrade", "upg"]);
-            assert_eq!(
-                Operation::UpgradeAll.default_aliases(),
-                &["upgrade-all", "full-upgrade"]
-            );
-            assert_eq!(
-                Operation::Search.default_aliases(),
-                &["search", "s", "find"]
-            );
-            assert_eq!(Operation::List.default_aliases(), &["list", "ls"]);
-            assert_eq!(Operation::Info.default_aliases(), &["info", "show"]);
-            assert_eq!(Operation::Clean.default_aliases(), &["clean", "cleanup"]);
-            assert_eq!(Operation::Files.default_aliases(), &["files", "ls-files"]);
-            assert_eq!(Operation::Check.default_aliases(), &["check", "verify"]);
-            assert_eq!(
-                Operation::Autoremove.default_aliases(),
-                &["autoremove", "auto-remove"]
-            );
-            assert_eq!(
-                Operation::Owns.default_aliases(),
-                &["owns", "owner", "which-package"]
-            );
+            assert_eq!(Operation::Install.default_aliases(), &["install"]);
+            assert_eq!(Operation::Remove.default_aliases(), &["remove"]);
+            assert_eq!(Operation::Update.default_aliases(), &["update"]);
+            assert_eq!(Operation::Upgrade.default_aliases(), &["upgrade"]);
+            assert_eq!(Operation::UpgradeAll.default_aliases(), &["upgrade-all"]);
+            assert_eq!(Operation::Search.default_aliases(), &["search"]);
+            assert_eq!(Operation::List.default_aliases(), &["list"]);
+            assert_eq!(Operation::Info.default_aliases(), &["info"]);
+            assert_eq!(Operation::Clean.default_aliases(), &["clean"]);
+            assert_eq!(Operation::Files.default_aliases(), &["files"]);
+            assert_eq!(Operation::Check.default_aliases(), &["check"]);
+            assert_eq!(Operation::Autoremove.default_aliases(), &["autoremove"]);
+            assert_eq!(Operation::Owns.default_aliases(), &["owns"]);
         }
 
         #[test]
         fn test_operation_try_from_str() {
             assert_eq!(Operation::try_from_str("install"), Some(Operation::Install));
-            assert_eq!(Operation::try_from_str("i"), Some(Operation::Install));
-            assert_eq!(Operation::try_from_str("add"), Some(Operation::Install));
             assert_eq!(Operation::try_from_str("remove"), Some(Operation::Remove));
-            assert_eq!(Operation::try_from_str("rm"), Some(Operation::Remove));
             assert_eq!(Operation::try_from_str("search"), Some(Operation::Search));
-            assert_eq!(Operation::try_from_str("s"), Some(Operation::Search));
-            assert_eq!(Operation::try_from_str("find"), Some(Operation::Search));
             assert_eq!(Operation::try_from_str("update"), Some(Operation::Update));
-            assert_eq!(Operation::try_from_str("up"), Some(Operation::Update));
             assert_eq!(
                 Operation::try_from_str("upgrade-all"),
-                Some(Operation::UpgradeAll)
-            );
-            assert_eq!(
-                Operation::try_from_str("full-upgrade"),
                 Some(Operation::UpgradeAll)
             );
         }
@@ -517,12 +489,20 @@ mod tests {
             assert_eq!(Operation::try_from_str("invalid"), None);
             assert_eq!(Operation::try_from_str(""), None);
             assert_eq!(Operation::try_from_str("instal"), None);
+            // These used to be built-in shorthand aliases; they're no longer
+            // recognized unless a user adds them to their own config.
+            assert_eq!(Operation::try_from_str("i"), None);
+            assert_eq!(Operation::try_from_str("add"), None);
+            assert_eq!(Operation::try_from_str("rm"), None);
+            assert_eq!(Operation::try_from_str("s"), None);
+            assert_eq!(Operation::try_from_str("find"), None);
+            assert_eq!(Operation::try_from_str("up"), None);
+            assert_eq!(Operation::try_from_str("full-upgrade"), None);
         }
 
         #[test]
         fn test_operation_from_str() {
             assert_eq!(Operation::from_str("install").unwrap(), Operation::Install);
-            assert_eq!(Operation::from_str("i").unwrap(), Operation::Install);
             assert_eq!(Operation::from_str("remove").unwrap(), Operation::Remove);
         }
 

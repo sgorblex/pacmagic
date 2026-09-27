@@ -57,7 +57,7 @@ pub enum Operation {
 }
 ```
 
-Each `Operation` carries its own default CLI aliases (e.g. `install`/`i`/`add`) via `default_aliases()`, which is also how `Config`'s user-defined aliases are validated and resolved.
+Each `Operation` carries its own canonical CLI name (e.g. `install`) via `default_aliases()`, which is also how `Config`'s user-defined aliases are validated and resolved. `default_aliases()` returns only that single canonical name — shorthand aliases (`i`, `rm`, ...) aren't built in; users add their own under `[aliases]`.
 
 `OperationOptions` carries the modifiers that affect behavior across all adapters: `no_confirm`, `use_sudo`, `verbose`, `dry_run`, `show_commands`, `install_behavior`, `extra_flags`, `force`. Two enums tune install semantics further:
 - `InstallBehavior` — what to do if a package is already installed (`Upgrade`/`Reinstall`/`Skip`/`Abort`/`Default`)

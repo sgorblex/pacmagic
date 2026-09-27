@@ -416,7 +416,6 @@ mod tests {
     fn test_resolve_alias() {
         let config = Config::default();
         assert_eq!(config.resolve_alias("install"), Some(Operation::Install));
-        assert_eq!(config.resolve_alias("i"), Some(Operation::Install));
         assert_eq!(config.resolve_alias("search"), Some(Operation::Search));
         assert_eq!(config.resolve_alias("nonexistent"), None);
     }
@@ -475,7 +474,6 @@ mod tests {
             config.resolve_alias("custom-install"),
             Some(Operation::Install)
         );
-        assert_eq!(config.resolve_alias("i"), Some(Operation::Install));
 
         let ops = config.resolve_alias_sequence("custom-sync");
         assert!(ops.is_some());
@@ -498,10 +496,10 @@ mod tests {
         configs.push(config_apt);
 
         for config in configs {
-            assert_eq!(config.resolve_alias("i"), Some(Operation::Install));
-            assert_eq!(config.resolve_alias("rm"), Some(Operation::Remove));
-            assert_eq!(config.resolve_alias("up"), Some(Operation::Update));
-            assert_eq!(config.resolve_alias("s"), Some(Operation::Search));
+            assert_eq!(config.resolve_alias("install"), Some(Operation::Install));
+            assert_eq!(config.resolve_alias("remove"), Some(Operation::Remove));
+            assert_eq!(config.resolve_alias("update"), Some(Operation::Update));
+            assert_eq!(config.resolve_alias("search"), Some(Operation::Search));
         }
     }
 
@@ -682,11 +680,12 @@ mod tests {
     fn test_config_default_aliases_populated() {
         let config = Config::default();
         assert!(config.aliases.contains_key("install"));
-        assert!(config.aliases.contains_key("i"));
         assert!(config.aliases.contains_key("remove"));
-        assert!(config.aliases.contains_key("rm"));
         assert!(config.aliases.contains_key("search"));
-        assert!(config.aliases.contains_key("s"));
+        // Shorthand aliases are no longer built in by default.
+        assert!(!config.aliases.contains_key("i"));
+        assert!(!config.aliases.contains_key("rm"));
+        assert!(!config.aliases.contains_key("s"));
     }
 
     #[test]
