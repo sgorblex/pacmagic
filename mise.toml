@@ -3,6 +3,9 @@ rust = { version = "1.97.0", profile = "default" }
 "github:EmbarkStudios/cargo-deny" = "0.20.2"
 "github:bnjbvr/cargo-machete" = "0.9.2"
 
+[env]
+CARGO_TERM_COLOR = "always"
+
 [tasks.test]
 description = "Run tests"
 run = "cargo test --all-targets --all-features --locked"
@@ -16,7 +19,15 @@ alias = "fmt"
 description = "Format code with rustfmt"
 run = "cargo fmt --all"
 
+[tasks.fix]
+description = "Apply clippy auto-fixes, then format"
+run = [
+  "cargo clippy --fix --allow-dirty --all-targets --all-features --locked",
+  "cargo fmt --all",
+]
+
 [tasks.fmt-check]
+hide = true
 description = "Check formatting with rustfmt (no changes)"
 run = "cargo fmt --all -- --check"
 
@@ -41,18 +52,31 @@ description = "Build and open documentation"
 run = "cargo doc --locked --open --no-deps"
 
 [tasks.doc-check]
+hide = true
 description = "Check documentation builds without warnings"
 env = { RUSTDOCFLAGS = "-D warnings" }
 run = "cargo doc --no-deps --all-features --locked"
 
 [tasks.deny]
+hide = true
 description = "Check dependencies for vulnerabilities and license compliance"
 run = "cargo deny check advisories licenses sources bans"
 
 [tasks.machete]
+hide = true
 description = "Check for unused dependencies"
 run = "cargo machete"
 
-[tasks.all]
-description = "Bundled checks (fmt, clippy, test, deny, docs, machete)"
-depends = ["fmt-check", "lint", "test", "deny", "doc-check", "machete"]
+[tasks.msrv]
+hide = true
+description = "Check the crate builds on the MSRV (rust-version in Cargo.toml)"
+run = '''
+v=$(sed -n 's/^rust-version *= *"\(.*\)"/\1/p' Cargo.toml | head -1)
+rustup toolchain install "$v" --profile minimal
+cargo "+$v" check --all-targets --all-features --locked
+'''
+
+[tasks.check-all]
+alias = "all"
+description = "Every CI check (fmt, clippy, test, deny, docs, MSRV, machete)"
+depends = ["fmt-check", "lint", "test", "deny", "doc-check", "msrv", "machete"]

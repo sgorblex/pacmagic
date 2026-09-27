@@ -17,11 +17,13 @@ mise run test          # cargo test --all-targets --all-features --locked
 mise run lint          # cargo clippy --all-targets --all-features --locked -- -D warnings
 mise run fmt-check     # cargo fmt --all -- --check
 mise run format        # cargo fmt --all (writes files)
+mise run fix           # clippy --fix, then cargo fmt (writes files)
 mise run doc-check     # cargo doc --no-deps --all-features --locked (RUSTDOCFLAGS=-D warnings)
-mise run all           # bundled: fmt-check, lint, test, deny, doc-check, machete
+mise run msrv          # cargo check on the MSRV toolchain (installed via rustup)
+mise run check-all     # bundled: fmt-check, lint, test, deny, doc-check, msrv, machete (alias: all)
 ```
 
-`mise run all` mirrors CI and needs `cargo-deny` and `cargo-machete` on `PATH`. Without mise, use plain Cargo (see `CONTRIBUTING.md` for the equivalent `cargo` invocations); MSRV is **1.82** (`rust-version` in `Cargo.toml`), toolchain pin for local dev is `1.94.0` (`mise.toml`).
+`mise run check-all` mirrors CI and needs `cargo-deny` and `cargo-machete` on `PATH`. Without mise, use plain Cargo (see `CONTRIBUTING.md` for the equivalent `cargo` invocations). The MSRV is `rust-version` in `Cargo.toml` (bumped by hand); the local toolchain pin is `rust` in `mise.toml` (bumped by Renovate). Don't restate either number elsewhere.
 
 Run a single test:
 ```bash
@@ -76,7 +78,9 @@ TOML config loaded from `$XDG_CONFIG_HOME` (or `~/.config` on Linux, `~/Library/
 ## Notes
 
 - Security-sensitive boundary: `core::validation` is what stands between user input and shelling out to a real package manager. Any new code path that passes user-supplied strings to adapters must go through it (see `PacMagic::execute` in `lib.rs`).
-- CI (`.github/workflows/ci.yml`) runs fmt, clippy (`-D warnings`), tests on Linux/macOS/Windows (stable + beta), `cargo-deny`, doc build (`-D warnings`), MSRV check, and `cargo-machete`, gated behind a final `ci-pass` job — match this locally with `mise run all` before pushing.
+- CI (`.github/workflows/ci.yml`) runs fmt, clippy (`-D warnings`), tests on Linux/macOS/Windows (stable + beta), `cargo-deny`, doc build (`-D warnings`), MSRV check, and `cargo-machete`, gated behind a final `ci-pass` job — match this locally with `mise run check-all` before pushing.
+- Dependencies are updated by [Renovate](https://docs.renovatebot.com/) (`renovate.json`): routine bumps wait for approval on the Dependency Dashboard issue, then automerge (minor/patch cargo only); security fixes skip approval and use `fix(deps):` so release-please cuts a release for them. `.github/workflows/assignee.yml` assigns Renovate's PRs to the repo owner.
+- `.claude/settings.json` runs background agents in their own worktree under `.claude/worktrees/` (gitignored); a `SessionEnd` hook deletes `worktree-*` branches already merged into `main`.
 - Rust edition is 2021 for the crate (`Cargo.toml`) but `.rustfmt.toml` is pinned to `edition = "2024"` formatting rules — this is intentional, not a mismatch to fix.
 - **Commit messages matter beyond style**: releases are fully automated by [release-please](https://github.com/googleapis/release-please) (`.github/workflows/release-please.yml`, config in `release-please-config.json`/`.release-please-manifest.json`), driven by Conventional Commit types on `main` (`feat`/`fix`/breaking-change footers bump the version and populate `CHANGELOG.md`; see `CONTRIBUTING.md`). Get the commit type right.
 - release-please's PRs and tags are authored with the default `GITHUB_TOKEN`, so per GitHub's recursive-workflow-trigger prevention, `ci.yml` does **not** run on release-please's own release PRs, and pushing its tag doesn't independently trigger a workflow — the binary-build/publish jobs in `release-please.yml` are chained via `needs:`/job outputs in the *same* workflow run instead. This is intentional, not a gap to fix by adding a PAT.

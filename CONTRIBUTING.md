@@ -15,13 +15,13 @@ Thank you for your interest in contributing to PacMagic! This document covers ev
 - Rust **1.85** or later (**MSRV**, see `rust-version` in `Cargo.toml`).
 - A supported package manager (apt, pacman, paru, brew, winget) if you want to exercise real (non-dry-run) operations.
 
-Optional but recommended: [mise](https://mise.jdx.dev/) reads `mise.toml` and installs the repo-pinned Rust version, plus `cargo-deny` and `cargo-machete` (needed for `mise run all`):
+Optional but recommended: [mise](https://mise.jdx.dev/) reads `mise.toml` and installs the repo-pinned Rust version, plus `cargo-deny` and `cargo-machete` (needed for `mise run check-all`):
 
 ```bash
 mise install
 ```
 
-If you skip mise, use any rustup toolchain meeting the MSRV above, run `rustup component add rustfmt clippy` if `cargo fmt`/`cargo clippy` are missing, and install `cargo-deny`/`cargo-machete` yourself if you want to run `mise run all`'s full check bundle.
+If you skip mise, use any rustup toolchain meeting the MSRV above, run `rustup component add rustfmt clippy` if `cargo fmt`/`cargo clippy` are missing, and install `cargo-deny`/`cargo-machete` yourself if you want to run `mise run check-all`'s full check bundle.
 
 ### Building
 
@@ -294,7 +294,7 @@ These aren't just style — commit types on `main` directly drive [release-pleas
    git checkout -b feat/my-feature
    ```
 3. **Make** your changes
-4. **Test** thoroughly (or `mise install` then `mise run all` if you use mise — see `mise.toml`):
+4. **Test** thoroughly (or `mise install` then `mise run check-all` if you use mise — see `mise.toml`):
    ```bash
    cargo test --all-targets --all-features --locked
    cargo clippy --all-targets --all-features --locked -- -D warnings

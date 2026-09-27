@@ -1,0 +1,50 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "automerge": true,
+  "automergeStrategy": "squash",
+  "platformAutomerge": true,
+  "dependencyDashboard": true,
+  "dependencyDashboardApproval": true,
+  "minimumReleaseAge": "7 days",
+  "vulnerabilityAlerts": {
+    "description": "release-please hides `chore`, so a `chore(deps):` security fix would never cut a release on its own. `fix` makes it a patch release. These skip dashboard approval, so keep a person in front of the merge.",
+    "semanticCommitType": "fix",
+    "automerge": false
+  },
+  "lockFileMaintenance": {
+    "enabled": true
+  },
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "pinDigests": true,
+      "groupName": "GitHub Actions",
+      "automerge": false,
+      "description": "Nothing on a PR exercises most workflow changes (release-please.yml runs only on main)."
+    },
+    {
+      "matchManagers": ["mise"],
+      "groupName": "mise tool versions",
+      "automerge": false,
+      "lockFileMaintenance": { "enabled": false },
+      "description": "mise is dev-only (CI installs its own toolchains), so CI passing proves nothing about these. No mise.lock, so nothing for lock file maintenance to refresh."
+    },
+    {
+      "matchManagers": ["mise"],
+      "matchDepNames": ["rust"],
+      "groupName": "Rust toolchain (expect new clippy diagnostics)",
+      "description": "clippy runs with -D warnings; a new toolchain can fail a green branch. Fix the new lints in the same PR."
+    },
+    {
+      "matchManagers": ["cargo"],
+      "groupName": "Rust dependencies (cargo)",
+      "rangeStrategy": "update-lockfile",
+      "description": "Cargo.toml uses caret ranges, so in-range updates arrive as named PRs touching Cargo.lock only."
+    }
+  ]
+}
