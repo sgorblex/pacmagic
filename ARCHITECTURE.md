@@ -207,7 +207,7 @@ An honest snapshot of the architecture as built today, kept here as the baseline
 - **Synchronous, one subprocess per call**: every adapter method blocks on a single `std::process::Command` via `CommandExecutor`; there's no async runtime and no batching of multiple operations into one underlying invocation.
 - **No caching**: `is_available()`/`priority()`/detection results are recomputed on every run; nothing is memoized across a single `pacmagic` invocation or between invocations.
 - **Adapters are hardcoded**: `AdapterRegistry::new()` in `src/adapters/mod.rs` lists all built-in adapters directly; there is no dynamic plugin loading (`AdapterRegistry::register()` exists for library consumers to add their own at runtime, but nothing in the CLI uses it).
-- **Sequential multi-command aliases**: alias sequences like `sync = ["update", "upgrade-all"]` run one operation after another in `main.rs`, not as a single combined package manager invocation (pacman/paru's `install` path already special-cases `-Syu <packages>` to avoid this — see `handle_install_pre_update` in `src/lib.rs` — but this optimization isn't generalized).
+- **Sequential multi-command aliases**: alias sequences like `sync = ["update", "upgrade-all"]` run one operation after another in `main.rs`, not as a single combined package manager invocation — each step is its own separate subprocess call, even for pacman/paru where `update`'s `-Sy` and `upgrade-all`'s `-Su` could in principle be combined into one `-Syu`.
 
 ## Testing Strategy
 
