@@ -334,7 +334,9 @@ impl PackageManager for Pacman {
         let mut list_cmd = Command::new("pacman");
         list_cmd.arg("-Qtdq");
 
-        let output = executor.execute_capture(list_cmd)?;
+        // `pacman -Qtdq` exits with status 1 when there are no orphans, which
+        // just means there is nothing to remove
+        let output = executor.execute_capture_accepting(list_cmd, &[1])?;
         let orphans: Vec<&str> = output.lines().filter(|line| !line.is_empty()).collect();
 
         if orphans.is_empty() {
