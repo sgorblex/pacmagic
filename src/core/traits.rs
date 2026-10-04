@@ -41,8 +41,9 @@ pub trait PackageManager: Send + Sync {
     /// List installed packages
     fn list_installed(&self, options: &OperationOptions) -> Result<Vec<Package>>;
 
-    /// Get information about a package
-    fn info(&self, package: &str, options: &OperationOptions) -> Result<Package>;
+    /// Show information about packages, forwarding the package manager's
+    /// native output as-is
+    fn info(&self, packages: &[&str], options: &OperationOptions) -> Result<()>;
 
     /// Clean package cache
     fn clean(&self, options: &OperationOptions) -> Result<()>;

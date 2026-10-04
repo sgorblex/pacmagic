@@ -201,8 +201,8 @@ mod tests {
                 Ok(vec![])
             }
 
-            fn info(&self, _package: &str, _options: &OperationOptions) -> Result<Package> {
-                Ok(Package::new("test".to_string(), "mock".to_string()))
+            fn info(&self, _packages: &[&str], _options: &OperationOptions) -> Result<()> {
+                Ok(())
             }
 
             fn clean(&self, _options: &OperationOptions) -> Result<()> {

@@ -267,19 +267,7 @@ impl PacMagic {
                 }
                 Ok(())
             }
-            Operation::Info => {
-                for package in packages {
-                    let info = pm.info(package, &options)?;
-                    println!("Package: {}", info.name);
-                    if let Some(version) = &info.version {
-                        println!("Version: {}", version);
-                    }
-                    if let Some(desc) = &info.description {
-                        println!("Description: {}", desc);
-                    }
-                }
-                Ok(())
-            }
+            Operation::Info => pm.info(packages, &options),
             Operation::Clean => pm.clean(&options),
             Operation::Files => {
                 for package in packages {
