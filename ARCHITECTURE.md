@@ -35,7 +35,7 @@ pub trait PackageManager: Send + Sync {
     fn upgrade_all(&self, options: &OperationOptions) -> Result<()>;
     fn search(&self, query: &str, options: &OperationOptions) -> Result<Vec<Package>>;
     fn list_installed(&self, options: &OperationOptions) -> Result<Vec<Package>>;
-    fn info(&self, package: &str, options: &OperationOptions) -> Result<Package>;
+    fn info(&self, packages: &[&str], options: &OperationOptions) -> Result<()>;
     fn clean(&self, options: &OperationOptions) -> Result<()>;
     fn files(&self, package: &str, options: &OperationOptions) -> Result<Vec<String>>;
     fn check(&self, options: &OperationOptions) -> Result<()>;

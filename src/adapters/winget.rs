@@ -374,38 +374,24 @@ impl PackageManager for Winget {
         Ok(packages)
     }
 
-    fn info(&self, package: &str, options: &OperationOptions) -> Result<Package> {
+    fn info(&self, packages: &[&str], options: &OperationOptions) -> Result<()> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose)
             .with_show_commands(options.show_commands);
 
-        let mut cmd = Command::new("winget");
-        cmd.arg("show");
-        cmd.arg("--id");
-        cmd.arg(package);
-        cmd.arg("--exact");
-        Self::push_capture_mode_flags(&mut cmd, options);
+        // `winget show` accepts a single package per invocation
+        for package in packages {
+            let mut cmd = Command::new("winget");
+            cmd.arg("show");
+            cmd.arg("--id");
+            cmd.arg(package);
+            cmd.arg("--exact");
+            Self::push_capture_mode_flags(&mut cmd, options);
+            cmd.args(&options.extra_flags);
 
-        let output = executor.execute_capture(cmd)?;
-
-        let mut pkg = Package::new(package.to_string(), "winget".to_string());
-        for line in output.lines() {
-            let Some((k, v)) = line.split_once(':') else {
-                continue;
-            };
-            let key = k.trim().to_lowercase();
-            let val = v.trim();
-            if val.is_empty() {
-                continue;
-            }
-            match key.as_str() {
-                "version" => pkg.version = Some(val.to_string()),
-                "description" => pkg.description = Some(val.to_string()),
-                "homepage" => pkg.metadata.homepage = Some(val.to_string()),
-                _ => {}
-            }
+            executor.execute_interactive(cmd)?;
         }
 
-        Ok(pkg)
+        Ok(())
     }
 
     fn clean(&self, _options: &OperationOptions) -> Result<()> {

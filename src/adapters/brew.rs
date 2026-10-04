@@ -241,37 +241,16 @@ impl PackageManager for Brew {
         Ok(packages)
     }
 
-    fn info(&self, package: &str, options: &OperationOptions) -> Result<Package> {
+    fn info(&self, packages: &[&str], options: &OperationOptions) -> Result<()> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose)
             .with_show_commands(options.show_commands);
         let mut cmd = Command::new("brew");
 
         cmd.arg("info");
-        cmd.arg("--json=v2");
-        cmd.arg(package);
+        cmd.args(packages);
+        cmd.args(&options.extra_flags);
 
-        let output = executor.execute_capture(cmd)?;
-
-        let json: serde_json::Value = serde_json::from_str(&output)
-            .map_err(|e| PacMagicError::ExecutionError(format!("Failed to parse JSON: {}", e)))?;
-
-        let mut pkg = Package::new(package.to_string(), "brew".to_string());
-
-        if let Some(formulae) = json["formulae"].as_array() {
-            if let Some(formula) = formulae.first() {
-                if let Some(version) = formula["versions"]["stable"].as_str() {
-                    pkg.version = Some(version.to_string());
-                }
-                if let Some(desc) = formula["desc"].as_str() {
-                    pkg.description = Some(desc.to_string());
-                }
-                if let Some(homepage) = formula["homepage"].as_str() {
-                    pkg.metadata.homepage = Some(homepage.to_string());
-                }
-            }
-        }
-
-        Ok(pkg)
+        executor.execute_interactive(cmd)
     }
 
     fn clean(&self, options: &OperationOptions) -> Result<()> {

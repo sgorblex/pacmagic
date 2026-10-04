@@ -264,29 +264,16 @@ impl PackageManager for Pacman {
         Ok(packages)
     }
 
-    fn info(&self, package: &str, options: &OperationOptions) -> Result<Package> {
+    fn info(&self, packages: &[&str], options: &OperationOptions) -> Result<()> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose)
             .with_show_commands(options.show_commands);
         let mut cmd = Command::new("pacman");
 
         cmd.arg("-Si");
-        cmd.arg(package);
+        cmd.args(packages);
+        cmd.args(&options.extra_flags);
 
-        let output = executor.execute_capture(cmd)?;
-
-        let mut pkg = Package::new(package.to_string(), "pacman".to_string());
-
-        for line in output.lines() {
-            if let Some(value) = line.strip_prefix("Version         : ") {
-                pkg.version = Some(value.trim().to_string());
-            } else if let Some(value) = line.strip_prefix("Description     : ") {
-                pkg.description = Some(value.trim().to_string());
-            } else if let Some(value) = line.strip_prefix("Repository      : ") {
-                pkg.repository = Some(value.trim().to_string());
-            }
-        }
-
-        Ok(pkg)
+        executor.execute_interactive(cmd)
     }
 
     fn clean(&self, options: &OperationOptions) -> Result<()> {
