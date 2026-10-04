@@ -62,7 +62,13 @@ impl CommandExecutor {
     }
 
     /// Execute a command and return the output
-    pub fn execute(&self, mut command: Command) -> Result<Output> {
+    pub fn execute(&self, command: Command) -> Result<Output> {
+        self.execute_accepting(command, &[])
+    }
+
+    /// Execute a command and return the output, treating exit status 0 and
+    /// any of `extra_ok_codes` as success
+    fn execute_accepting(&self, mut command: Command, extra_ok_codes: &[i32]) -> Result<Output> {
         if self.verbose {
             info!("Executing: {:?}", command);
         }
@@ -83,7 +89,11 @@ impl CommandExecutor {
             PacMagicError::ExecutionError(format!("Failed to execute command: {}", e))
         })?;
 
-        if !output.status.success() {
+        let accepted = output
+            .status
+            .code()
+            .is_some_and(|code| extra_ok_codes.contains(&code));
+        if !output.status.success() && !accepted {
             let stderr = String::from_utf8_lossy(&output.stderr);
             let stdout = String::from_utf8_lossy(&output.stdout);
 
@@ -118,7 +128,18 @@ impl CommandExecutor {
 
     /// Execute a command and return stdout as a string
     pub fn execute_capture(&self, command: Command) -> Result<String> {
-        let output = self.execute(command)?;
+        self.execute_capture_accepting(command, &[])
+    }
+
+    /// Execute a command and return stdout as a string, treating exit status 0
+    /// and any of `extra_ok_codes` as success (e.g. for query commands that
+    /// exit non-zero when there are no results)
+    pub fn execute_capture_accepting(
+        &self,
+        command: Command,
+        extra_ok_codes: &[i32],
+    ) -> Result<String> {
+        let output = self.execute_accepting(command, extra_ok_codes)?;
         let stdout = String::from_utf8(output.stdout).map_err(|e| {
             PacMagicError::ExecutionError(format!("Invalid UTF-8 in output: {}", e))
         })?;
@@ -243,6 +264,23 @@ mod tests {
         cmd.arg("hello world");
         let output = executor.execute_capture(cmd).unwrap();
         assert_eq!(output.trim(), "hello world");
+    }
+
+    #[test]
+    fn test_command_executor_execute_capture_accepting_listed_code() {
+        let executor = CommandExecutor::new(false, false);
+        let mut cmd = Command::new("sh");
+        cmd.args(["-c", "exit 1"]);
+        let output = executor.execute_capture_accepting(cmd, &[1]).unwrap();
+        assert!(output.is_empty());
+    }
+
+    #[test]
+    fn test_command_executor_execute_capture_accepting_unlisted_code() {
+        let executor = CommandExecutor::new(false, false);
+        let mut cmd = Command::new("sh");
+        cmd.args(["-c", "exit 2"]);
+        assert!(executor.execute_capture_accepting(cmd, &[1]).is_err());
     }
 
     #[test]
