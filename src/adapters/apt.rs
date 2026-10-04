@@ -368,6 +368,7 @@ impl PackageManager for Apt {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::PackageSource;
 
     #[test]
     fn test_apt_creation() {
@@ -381,5 +382,13 @@ mod tests {
         assert!(apt.supports_operation(Operation::Install));
         assert!(apt.supports_operation(Operation::Search));
         assert!(apt.supports_operation(Operation::Files)); // Supported via dpkg
+    }
+
+    #[test]
+    fn test_source_support() {
+        let apt = Apt::new();
+        assert!(apt.supports_source(Operation::Install, PackageSource::Any));
+        assert!(!apt.supports_source(Operation::Install, PackageSource::User));
+        assert!(!apt.supports_source(Operation::Search, PackageSource::Official));
     }
 }

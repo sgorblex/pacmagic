@@ -7,7 +7,7 @@ pub use adapters::AdapterRegistry;
 pub use config::Config;
 pub use core::{
     InstallBehavior, InstallPreUpdateBehavior, Operation, OperationOptions, PacMagicError, Package,
-    PackageManager, Result,
+    PackageManager, PackageSource, Result,
 };
 pub use platform::PlatformDetector;
 
@@ -243,9 +243,20 @@ impl PacMagic {
             });
         }
 
+        if operation.is_source_filterable() && !pm.supports_source(operation, options.source) {
+            return Err(PacMagicError::SourceNotSupported {
+                pm: pm.name().to_string(),
+                op: operation.to_string(),
+                package_source: options.source.to_string(),
+            });
+        }
+
         match operation {
             Operation::Install => {
-                self.handle_install_pre_update(packages, &options, &*pm)?;
+                // The pre-install upgrade must cover every source: upgrading only
+                // e.g. AUR packages would leave the system partially upgraded
+                let pre_update_options = options.clone().with_source(PackageSource::Any);
+                self.handle_install_pre_update(packages, &pre_update_options, &*pm)?;
                 pm.install(packages, &options)
             }
             Operation::Remove => pm.remove(packages, &options),
@@ -373,5 +384,155 @@ Name                Id                     Version     Available   Source
 Foo                Foo.Bar                 3.0         3.1         winget
 "#;
         assert_eq!(PacMagic::count_winget_upgrade_output(output_unicode_sep), 1);
+    }
+
+    mod package_source_dispatch {
+        use super::*;
+        use std::sync::{Arc, Mutex};
+
+        /// Records each call with the source it received; accepts `Any` and `User` only
+        #[derive(Default)]
+        struct RecordingPackageManager {
+            calls: Mutex<Vec<(&'static str, PackageSource)>>,
+        }
+
+        impl RecordingPackageManager {
+            fn record(&self, call: &'static str, options: &OperationOptions) -> Result<()> {
+                self.calls.lock().unwrap().push((call, options.source));
+                Ok(())
+            }
+
+            fn calls(&self) -> Vec<(&'static str, PackageSource)> {
+                self.calls.lock().unwrap().clone()
+            }
+        }
+
+        impl PackageManager for RecordingPackageManager {
+            fn name(&self) -> &str {
+                "recording"
+            }
+
+            fn command_names(&self) -> &[&str] {
+                &["recording"]
+            }
+
+            fn is_available(&self) -> bool {
+                true
+            }
+
+            fn supports_operation(&self, _operation: Operation) -> bool {
+                true
+            }
+
+            fn supports_source(&self, _operation: Operation, source: PackageSource) -> bool {
+                source != PackageSource::Official
+            }
+
+            fn install(&self, _packages: &[&str], options: &OperationOptions) -> Result<()> {
+                self.record("install", options)
+            }
+
+            fn remove(&self, _packages: &[&str], options: &OperationOptions) -> Result<()> {
+                self.record("remove", options)
+            }
+
+            fn update(&self, options: &OperationOptions) -> Result<()> {
+                self.record("update", options)
+            }
+
+            fn upgrade(&self, _packages: &[&str], options: &OperationOptions) -> Result<()> {
+                self.record("upgrade", options)
+            }
+
+            fn upgrade_all(&self, options: &OperationOptions) -> Result<()> {
+                self.record("upgrade_all", options)
+            }
+
+            fn search(&self, _query: &str, options: &OperationOptions) -> Result<Vec<Package>> {
+                self.record("search", options).map(|_| vec![])
+            }
+
+            fn list_installed(&self, options: &OperationOptions) -> Result<Vec<Package>> {
+                self.record("list_installed", options).map(|_| vec![])
+            }
+
+            fn info(&self, _packages: &[&str], options: &OperationOptions) -> Result<()> {
+                self.record("info", options)
+            }
+
+            fn clean(&self, options: &OperationOptions) -> Result<()> {
+                self.record("clean", options)
+            }
+
+            fn files(&self, _package: &str, options: &OperationOptions) -> Result<Vec<String>> {
+                self.record("files", options).map(|_| vec![])
+            }
+
+            fn check(&self, options: &OperationOptions) -> Result<()> {
+                self.record("check", options)
+            }
+
+            fn autoremove(&self, options: &OperationOptions) -> Result<()> {
+                self.record("autoremove", options)
+            }
+
+            fn owns(&self, _file_or_command: &str, options: &OperationOptions) -> Result<String> {
+                self.record("owns", options).map(|_| String::new())
+            }
+        }
+
+        fn pacmagic_with(pm: Arc<RecordingPackageManager>) -> PacMagic {
+            let mut config = Config::default();
+            config.general.default_package_manager = "recording".to_string();
+            config.general.install_pre_update_behavior = InstallPreUpdateBehavior::UpdateAndUpgrade;
+            let mut registry = AdapterRegistry::new();
+            registry.register(pm);
+            PacMagic { config, registry }
+        }
+
+        #[test]
+        fn test_pre_install_upgrade_ignores_source() {
+            let pm = Arc::new(RecordingPackageManager::default());
+            let options = OperationOptions::new().with_source(PackageSource::User);
+
+            pacmagic_with(pm.clone())
+                .execute(Operation::Install, &["foo"], &options)
+                .unwrap();
+
+            assert_eq!(
+                pm.calls(),
+                vec![
+                    ("update", PackageSource::Any),
+                    ("upgrade_all", PackageSource::Any),
+                    ("install", PackageSource::User),
+                ]
+            );
+        }
+
+        #[test]
+        fn test_unsupported_source_is_rejected() {
+            let pm = Arc::new(RecordingPackageManager::default());
+            let options = OperationOptions::new().with_source(PackageSource::Official);
+
+            let result = pacmagic_with(pm.clone()).execute(Operation::Search, &["foo"], &options);
+
+            assert!(matches!(
+                result,
+                Err(PacMagicError::SourceNotSupported { .. })
+            ));
+            assert!(pm.calls().is_empty());
+        }
+
+        #[test]
+        fn test_source_ignored_for_unfilterable_operation() {
+            let pm = Arc::new(RecordingPackageManager::default());
+            let options = OperationOptions::new().with_source(PackageSource::Official);
+
+            pacmagic_with(pm.clone())
+                .execute(Operation::Clean, &[], &options)
+                .unwrap();
+
+            assert_eq!(pm.calls(), vec![("clean", PackageSource::Official)]);
+        }
     }
 }

@@ -1,4 +1,4 @@
-use super::{Operation, OperationOptions, Package, Result};
+use super::{Operation, OperationOptions, Package, PackageSource, Result};
 
 /// Core trait that all package manager adapters must implement
 pub trait PackageManager: Send + Sync {
@@ -19,6 +19,13 @@ pub trait PackageManager: Send + Sync {
 
     /// Check if this package manager supports a given operation
     fn supports_operation(&self, operation: Operation) -> bool;
+
+    /// Check if this package manager can restrict a given operation to a
+    /// package source. Only consulted for operations where
+    /// [`Operation::is_source_filterable`] is true
+    fn supports_source(&self, _operation: Operation, source: PackageSource) -> bool {
+        source == PackageSource::Any
+    }
 
     /// Install one or more packages
     fn install(&self, packages: &[&str], options: &OperationOptions) -> Result<()>;

@@ -80,7 +80,14 @@ pacmagic list
 
 # Show package info
 pacmagic info nginx
+
+# Only official repositories, or only user repositories (e.g. the AUR)
+pacmagic install --user paru-bin
+pacmagic search --official python
+pacmagic list --user
 ```
+
+`--official`/`--user` apply to `install`, `upgrade`, `search`, `list` and `info`, and are ignored by other commands. Support depends on the package manager: paru supports both everywhere; pacman supports `--official` everywhere and `--user` only for `list` (foreign packages). apt, brew and winget don't support them yet.
 
 ### Configuration
 
