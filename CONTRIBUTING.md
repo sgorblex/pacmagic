@@ -251,7 +251,7 @@ cargo run --locked -- detect                      # show detected package manage
 
 - Update `README.md` for user-facing changes
 - Update `ARCHITECTURE.md` for design changes
-- Update `CHANGELOG.md` under `[Unreleased]` for any user-visible change
+- Don't edit `CHANGELOG.md` — release-please generates it from commit messages (see Release Process)
 
 ### Commit Messages
 
@@ -291,7 +291,7 @@ These aren't just style — commit types on `main` directly drive [release-pleas
 1. **Fork** the repository
 2. **Create** a feature branch:
    ```bash
-   git checkout -b feat/my-feature
+   git checkout -b feat/my_feature   # <type>/<short_name>, snake_case
    ```
 3. **Make** your changes
 4. **Test** thoroughly (or `mise install` then `mise run check-all` if you use mise — see `mise.toml`):
