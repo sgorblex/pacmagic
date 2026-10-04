@@ -1,7 +1,18 @@
 use crate::core::{
-    CommandExecutor, InstallBehavior, Operation, OperationOptions, Package, PackageManager, Result,
+    CommandExecutor, InstallBehavior, Operation, OperationOptions, Package, PackageManager,
+    PackageSource, Result,
 };
 use std::process::Command;
+
+/// `-Q` modifier restricting a listing to native (`-n`) or foreign (`-m`)
+/// packages; shared with paru, which uses pacman's query flags
+pub(crate) fn list_source_flag(source: PackageSource) -> Option<&'static str> {
+    match source {
+        PackageSource::Any => None,
+        PackageSource::Official => Some("-n"),
+        PackageSource::User => Some("-m"),
+    }
+}
 
 pub struct Pacman;
 
@@ -79,12 +90,23 @@ impl PackageManager for Pacman {
         )
     }
 
+    fn supports_source(&self, operation: Operation, source: PackageSource) -> bool {
+        match source {
+            PackageSource::Any => true,
+            // pacman only installs from sync repositories
+            PackageSource::Official => operation.is_source_filterable(),
+            // Foreign (e.g. AUR) packages can be listed but not installed
+            PackageSource::User => operation == Operation::List,
+        }
+    }
+
     fn install(&self, packages: &[&str], options: &OperationOptions) -> Result<()> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose)
             .with_show_commands(options.show_commands);
 
         if options.install_behavior == InstallBehavior::Abort {
-            let installed = self.list_installed(options)?;
+            let installed =
+                self.list_installed(&options.clone().with_source(PackageSource::Any))?;
             let installed_names: std::collections::HashSet<String> =
                 installed.iter().map(|p| p.name.clone()).collect();
             let mut already_installed = Vec::new();
@@ -109,7 +131,8 @@ impl PackageManager for Pacman {
                 cmd.args(packages);
             }
             InstallBehavior::Skip => {
-                let installed = self.list_installed(options)?;
+                let installed =
+                    self.list_installed(&options.clone().with_source(PackageSource::Any))?;
                 let installed_names: std::collections::HashSet<String> =
                     installed.iter().map(|p| p.name.clone()).collect();
                 let mut skipped = Vec::new();
@@ -241,6 +264,7 @@ impl PackageManager for Pacman {
         let mut cmd = Command::new("pacman");
 
         cmd.arg("-Q");
+        cmd.args(list_source_flag(options.source));
 
         let output = executor.execute_capture(cmd)?;
 
@@ -412,5 +436,24 @@ mod tests {
         assert!(pacman.supports_operation(Operation::Install));
         assert!(pacman.supports_operation(Operation::Files));
         assert!(pacman.supports_operation(Operation::Autoremove));
+    }
+
+    #[test]
+    fn test_source_support() {
+        let pacman = Pacman::new();
+        assert!(pacman.supports_source(Operation::Install, PackageSource::Any));
+        assert!(pacman.supports_source(Operation::Install, PackageSource::Official));
+        assert!(pacman.supports_source(Operation::Search, PackageSource::Official));
+        assert!(pacman.supports_source(Operation::List, PackageSource::User));
+        assert!(!pacman.supports_source(Operation::Install, PackageSource::User));
+        assert!(!pacman.supports_source(Operation::Search, PackageSource::User));
+        assert!(!pacman.supports_source(Operation::Info, PackageSource::User));
+    }
+
+    #[test]
+    fn test_list_source_flag() {
+        assert_eq!(list_source_flag(PackageSource::Any), None);
+        assert_eq!(list_source_flag(PackageSource::Official), Some("-n"));
+        assert_eq!(list_source_flag(PackageSource::User), Some("-m"));
     }
 }

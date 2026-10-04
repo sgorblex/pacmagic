@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use pacmagic::{
-    AdapterRegistry, Config, InstallBehavior, Operation, OperationOptions, PacMagic,
+    AdapterRegistry, Config, InstallBehavior, Operation, OperationOptions, PacMagic, PackageSource,
     PlatformDetector,
 };
 use std::process;
@@ -68,9 +68,29 @@ struct Cli {
     #[arg(long = "install-behavior", value_enum, global = true)]
     install_behavior: Option<InstallBehaviorArg>,
 
+    /// Only use packages from official repositories
+    #[arg(long, global = true, conflicts_with = "user")]
+    official: bool,
+
+    /// Only use packages from user repositories (e.g. the AUR)
+    #[arg(long, global = true)]
+    user: bool,
+
     /// Pass additional arguments directly to the package manager
     #[arg(long = "pm-args", global = true, num_args = 1..)]
     pm_args: Option<Vec<String>>,
+}
+
+impl Cli {
+    fn package_source(&self) -> PackageSource {
+        if self.official {
+            PackageSource::Official
+        } else if self.user {
+            PackageSource::User
+        } else {
+            PackageSource::Any
+        }
+    }
 }
 
 #[derive(Subcommand)]
@@ -292,6 +312,7 @@ fn run_multi_command(cli: Cli, operations: Vec<Operation>) -> pacmagic::Result<(
         .with_dry_run(cli.dry_run)
         .with_no_confirm(cli.yes)
         .with_show_commands(!cli.quiet)
+        .with_source(cli.package_source())
         .append_extra_flags(&extra_flags);
 
     if let Some(behavior) = cli.install_behavior {
@@ -320,6 +341,8 @@ fn extract_unknown_args(args: &[String], _error: &clap::Error) -> Vec<String> {
         "-q",
         "--quiet",
         "--install-behavior",
+        "--official",
+        "--user",
         "--pm-args",
     ];
     let known_commands = command_names::COMMAND_NAMES;
@@ -441,6 +464,7 @@ fn run(cli: Cli, default_command_used: bool) -> pacmagic::Result<()> {
         .with_dry_run(cli.dry_run)
         .with_no_confirm(cli.yes)
         .with_show_commands(!cli.quiet)
+        .with_source(cli.package_source())
         .append_extra_flags(&extra_flags);
 
     if let Some(behavior) = cli.install_behavior {

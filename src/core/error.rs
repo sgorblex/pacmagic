@@ -13,6 +13,15 @@ pub enum PacMagicError {
     #[error("Package manager '{pm}' does not support operation '{op}'")]
     OperationNotSupported { pm: String, op: String },
 
+    #[error(
+        "Package manager '{pm}' cannot restrict '{op}' to {package_source}-repository packages"
+    )]
+    SourceNotSupported {
+        pm: String,
+        op: String,
+        package_source: String,
+    },
+
     #[error("Command execution failed: {0}")]
     ExecutionError(String),
 
@@ -43,7 +52,9 @@ impl PacMagicError {
     pub fn is_recoverable(&self) -> bool {
         matches!(
             self,
-            PacMagicError::PackageNotFound(_) | PacMagicError::OperationNotSupported { .. }
+            PacMagicError::PackageNotFound(_)
+                | PacMagicError::OperationNotSupported { .. }
+                | PacMagicError::SourceNotSupported { .. }
         )
     }
 
@@ -66,6 +77,9 @@ impl PacMagicError {
             }
             PacMagicError::InvalidOperation(_) => {
                 Some("Check your input for invalid characters or format")
+            }
+            PacMagicError::SourceNotSupported { .. } => {
+                Some("Drop --official/--user, or pick a package manager that supports it with -p")
             }
             PacMagicError::ConfigError(_) => {
                 Some("Check your configuration file syntax at ~/.config/pacmagic/config.toml")
@@ -123,6 +137,13 @@ mod tests {
         assert!(PacMagicError::ConfigError("test".to_string())
             .help_text()
             .is_some());
+        assert!(PacMagicError::SourceNotSupported {
+            pm: "apt".to_string(),
+            op: "install".to_string(),
+            package_source: "user".to_string(),
+        }
+        .help_text()
+        .is_some());
         assert!(PacMagicError::PackageNotFound("test".to_string())
             .help_text()
             .is_none());
@@ -142,6 +163,17 @@ mod tests {
         };
         assert!(err.to_string().contains("apt"));
         assert!(err.to_string().contains("test"));
+
+        let err = PacMagicError::SourceNotSupported {
+            pm: "apt".to_string(),
+            op: "install".to_string(),
+            package_source: "user".to_string(),
+        };
+        assert_eq!(
+            err.to_string(),
+            "Package manager 'apt' cannot restrict 'install' to user-repository packages"
+        );
+        assert!(err.is_recoverable());
     }
 
     #[test]

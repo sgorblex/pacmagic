@@ -55,6 +55,32 @@ impl FromStr for InstallBehavior {
     }
 }
 
+/// Which repositories an operation may draw packages from
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PackageSource {
+    /// No restriction: whatever the package manager uses by default
+    #[default]
+    Any,
+
+    /// Only official repositories
+    Official,
+
+    /// Only user repositories (e.g. the AUR)
+    User,
+}
+
+impl fmt::Display for PackageSource {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            PackageSource::Any => "any",
+            PackageSource::Official => "official",
+            PackageSource::User => "user",
+        };
+        write!(f, "{}", s)
+    }
+}
+
 /// Behavior for update/upgrade before installing packages
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -192,6 +218,20 @@ impl Operation {
         }
     }
 
+    /// Whether this operation can be restricted to a [`PackageSource`];
+    /// for other operations the source is ignored
+    pub fn is_source_filterable(&self) -> bool {
+        matches!(
+            self,
+            Operation::Install
+                | Operation::Upgrade
+                | Operation::UpgradeAll
+                | Operation::Search
+                | Operation::List
+                | Operation::Info
+        )
+    }
+
     /// Parse an operation from a string
     pub fn try_from_str(s: &str) -> Option<Self> {
         for op in Self::all() {
@@ -258,6 +298,9 @@ pub struct OperationOptions {
 
     /// Force operation even if risky
     pub force: bool,
+
+    /// Which repositories to draw packages from
+    pub source: PackageSource,
 }
 
 impl Default for OperationOptions {
@@ -271,6 +314,7 @@ impl Default for OperationOptions {
             install_behavior: InstallBehavior::Default,
             extra_flags: Vec::new(),
             force: false,
+            source: PackageSource::Any,
         }
     }
 }
@@ -312,6 +356,11 @@ impl OperationOptions {
 
     pub fn with_install_behavior(mut self, behavior: InstallBehavior) -> Self {
         self.install_behavior = behavior;
+        self
+    }
+
+    pub fn with_source(mut self, source: PackageSource) -> Self {
+        self.source = source;
         self
     }
 
@@ -690,6 +739,63 @@ mod tests {
             let options2 = options1.clone();
             assert_eq!(options1.verbose, options2.verbose);
             assert_eq!(options1.extra_flags, options2.extra_flags);
+        }
+    }
+
+    mod package_source_tests {
+        use super::*;
+
+        #[test]
+        fn test_package_source_default_is_any() {
+            assert_eq!(PackageSource::default(), PackageSource::Any);
+            assert_eq!(OperationOptions::default().source, PackageSource::Any);
+        }
+
+        #[test]
+        fn test_package_source_display() {
+            assert_eq!(PackageSource::Any.to_string(), "any");
+            assert_eq!(PackageSource::Official.to_string(), "official");
+            assert_eq!(PackageSource::User.to_string(), "user");
+        }
+
+        #[test]
+        fn test_package_source_serde() {
+            for source in [
+                PackageSource::Any,
+                PackageSource::Official,
+                PackageSource::User,
+            ] {
+                let json = serde_json::to_string(&source).unwrap();
+                assert_eq!(json, format!("\"{}\"", source));
+                let parsed: PackageSource = serde_json::from_str(&json).unwrap();
+                assert_eq!(parsed, source);
+            }
+        }
+
+        #[test]
+        fn test_with_source() {
+            let options = OperationOptions::new().with_source(PackageSource::User);
+            assert_eq!(options.source, PackageSource::User);
+        }
+
+        #[test]
+        fn test_is_source_filterable() {
+            let filterable = [
+                Operation::Install,
+                Operation::Upgrade,
+                Operation::UpgradeAll,
+                Operation::Search,
+                Operation::List,
+                Operation::Info,
+            ];
+            for op in Operation::all() {
+                assert_eq!(
+                    op.is_source_filterable(),
+                    filterable.contains(op),
+                    "unexpected is_source_filterable for {}",
+                    op
+                );
+            }
         }
     }
 }

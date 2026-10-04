@@ -1,5 +1,6 @@
 use crate::core::{
-    CommandExecutor, InstallBehavior, Operation, OperationOptions, Package, PackageManager, Result,
+    CommandExecutor, InstallBehavior, Operation, OperationOptions, Package, PackageManager,
+    PackageSource, Result,
 };
 use std::process::Command;
 
@@ -22,6 +23,15 @@ impl Paru {
         }
 
         cmd
+    }
+
+    /// Flag restricting sync operations to repository (`--repo`) or AUR (`--aur`) packages
+    fn sync_source_flag(source: PackageSource) -> Option<&'static str> {
+        match source {
+            PackageSource::Any => None,
+            PackageSource::Official => Some("--repo"),
+            PackageSource::User => Some("--aur"),
+        }
     }
 }
 
@@ -73,12 +83,17 @@ impl PackageManager for Paru {
         )
     }
 
+    fn supports_source(&self, operation: Operation, _source: PackageSource) -> bool {
+        operation.is_source_filterable()
+    }
+
     fn install(&self, packages: &[&str], options: &OperationOptions) -> Result<()> {
         let executor = CommandExecutor::new(options.dry_run, options.verbose)
             .with_show_commands(options.show_commands);
 
         if options.install_behavior == InstallBehavior::Abort {
-            let installed = self.list_installed(options)?;
+            let installed =
+                self.list_installed(&options.clone().with_source(PackageSource::Any))?;
             let installed_names: std::collections::HashSet<String> =
                 installed.iter().map(|p| p.name.clone()).collect();
             let mut already_installed = Vec::new();
@@ -97,13 +112,15 @@ impl PackageManager for Paru {
 
         let mut cmd = self.build_command(options);
         cmd.arg("-S");
+        cmd.args(Self::sync_source_flag(options.source));
 
         match options.install_behavior {
             InstallBehavior::Reinstall => {
                 cmd.args(packages);
             }
             InstallBehavior::Skip => {
-                let installed = self.list_installed(options)?;
+                let installed =
+                    self.list_installed(&options.clone().with_source(PackageSource::Any))?;
                 let installed_names: std::collections::HashSet<String> =
                     installed.iter().map(|p| p.name.clone()).collect();
                 let mut skipped = Vec::new();
@@ -170,6 +187,7 @@ impl PackageManager for Paru {
         let mut cmd = self.build_command(options);
 
         cmd.arg("-Su");
+        cmd.args(Self::sync_source_flag(options.source));
         cmd.args(&options.extra_flags);
 
         executor.execute_interactive(cmd)
@@ -181,6 +199,7 @@ impl PackageManager for Paru {
         let mut cmd = Command::new("paru");
 
         cmd.arg("-Ss");
+        cmd.args(Self::sync_source_flag(options.source));
         cmd.arg(query);
 
         let output = executor.execute_capture(cmd)?;
@@ -234,6 +253,7 @@ impl PackageManager for Paru {
         let mut cmd = Command::new("paru");
 
         cmd.arg("-Q");
+        cmd.args(super::pacman::list_source_flag(options.source));
 
         let output = executor.execute_capture(cmd)?;
 
@@ -263,6 +283,7 @@ impl PackageManager for Paru {
         let mut cmd = Command::new("paru");
 
         cmd.arg("-Si");
+        cmd.args(Self::sync_source_flag(options.source));
         cmd.args(packages);
         cmd.args(&options.extra_flags);
 
@@ -412,5 +433,27 @@ mod tests {
         let paru = Paru::new();
         let pacman = crate::adapters::pacman::Pacman::new();
         assert!(paru.priority() > pacman.priority());
+    }
+
+    #[test]
+    fn test_source_support() {
+        let paru = Paru::new();
+        for source in [PackageSource::Official, PackageSource::User] {
+            assert!(paru.supports_source(Operation::Install, source));
+            assert!(paru.supports_source(Operation::UpgradeAll, source));
+            assert!(paru.supports_source(Operation::Search, source));
+            assert!(paru.supports_source(Operation::List, source));
+            assert!(paru.supports_source(Operation::Info, source));
+        }
+    }
+
+    #[test]
+    fn test_sync_source_flag() {
+        assert_eq!(Paru::sync_source_flag(PackageSource::Any), None);
+        assert_eq!(
+            Paru::sync_source_flag(PackageSource::Official),
+            Some("--repo")
+        );
+        assert_eq!(Paru::sync_source_flag(PackageSource::User), Some("--aur"));
     }
 }

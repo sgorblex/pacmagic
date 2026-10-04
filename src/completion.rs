@@ -89,7 +89,8 @@ impl CompletionContext {
             }
 
             match arg {
-                "-v" | "--verbose" | "-n" | "--dry-run" | "-y" | "--yes" | "-q" | "--quiet" => {
+                "-v" | "--verbose" | "-n" | "--dry-run" | "-y" | "--yes" | "-q" | "--quiet"
+                | "--official" | "--user" => {
                     i += 1;
                     continue;
                 }

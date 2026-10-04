@@ -7,7 +7,9 @@ pub mod validation;
 
 pub use error::{PacMagicError, Result};
 pub use executor::CommandExecutor;
-pub use operation::{InstallBehavior, InstallPreUpdateBehavior, Operation, OperationOptions};
+pub use operation::{
+    InstallBehavior, InstallPreUpdateBehavior, Operation, OperationOptions, PackageSource,
+};
 pub use package::Package;
 pub use traits::PackageManager;
 pub use validation::{validate_package_name, validate_package_names, validate_search_query};

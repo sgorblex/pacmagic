@@ -27,6 +27,7 @@ pub trait PackageManager: Send + Sync {
     fn is_available(&self) -> bool;
     fn priority(&self) -> u8 { 50 } // higher = preferred when multiple are available
     fn supports_operation(&self, operation: Operation) -> bool;
+    fn supports_source(&self, operation: Operation, source: PackageSource) -> bool { source == PackageSource::Any }
 
     fn install(&self, packages: &[&str], options: &OperationOptions) -> Result<()>;
     fn remove(&self, packages: &[&str], options: &OperationOptions) -> Result<()>;
@@ -59,7 +60,11 @@ pub enum Operation {
 
 Each `Operation` carries its own canonical CLI name (e.g. `install`) via `default_aliases()`, which is also how `Config`'s user-defined aliases are validated and resolved. `default_aliases()` returns only that single canonical name — shorthand aliases (`i`, `rm`, ...) aren't built in; users add their own under `[aliases]`.
 
-`OperationOptions` carries the modifiers that affect behavior across all adapters: `no_confirm`, `use_sudo`, `verbose`, `dry_run`, `show_commands`, `install_behavior`, `extra_flags`, `force`. Two enums tune install semantics further:
+`OperationOptions` carries the modifiers that affect behavior across all adapters: `no_confirm`, `use_sudo`, `verbose`, `dry_run`, `show_commands`, `install_behavior`, `extra_flags`, `force`, `source`.
+
+`source` is a `PackageSource` (`Any`/`Official`/`User`, set by `--official`/`--user`) restricting which repositories an operation draws from (e.g. paru's `--repo`/`--aur`, or `-Qn`/`-Qm` for listing). It only applies to operations where `Operation::is_source_filterable()` is true (install, upgrade, upgrade-all, search, list, info); others ignore it. `PacMagic::execute` rejects a source the adapter's `supports_source()` doesn't accept with `SourceNotSupported`, and the pre-install update/upgrade always runs with `Any`, so restricting an install never causes a partial upgrade.
+
+Two enums tune install semantics further:
 - `InstallBehavior` — what to do if a package is already installed (`Upgrade`/`Reinstall`/`Skip`/`Abort`/`Default`)
 - `InstallPreUpdateBehavior` — whether to update/upgrade before an install (`UpdateAndUpgrade`/`UpdateOnly`/`UpdateAndAsk`/`None`/`Default`, where `Default` means "update+upgrade only on rolling releases", decided via `PlatformDetector::is_rolling_release()`)
 
