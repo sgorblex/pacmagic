@@ -432,7 +432,7 @@ Releases are automated by [release-please](https://github.com/googleapis/release
 
 1. Every push to `main` with releasable commits (`feat`, `fix`, `perf`, `revert`, or a breaking change) since the last release makes release-please open or update a "release PR" that bumps `Cargo.toml`'s `version`, updates `Cargo.lock`, and rewrites `CHANGELOG.md`.
 2. Review and merge that PR when you're ready to cut a release.
-3. On merge, release-please creates the git tag and GitHub Release (with the changelog as the release body); the same workflow then builds release binaries for Linux (x86_64 and aarch64), macOS (Apple silicon) and Windows (x86_64) and attaches them to that release.
+3. On merge, release-please creates the `vX.Y.Z` tag and GitHub Release (with the changelog as the release body); the same workflow then builds release binaries for Linux (x86_64 and aarch64), macOS (Apple silicon) and Windows (x86_64) and attaches them to that release.
 4. Config lives in `release-please-config.json` / `.release-please-manifest.json` at the repo root.
 
 Not published to crates.io yet — see `ROADMAP.md`. To rebuild/re-upload binaries for an existing tag without cutting a new release (e.g. after a failed build), run the workflow manually via `workflow_dispatch` with the existing tag.
