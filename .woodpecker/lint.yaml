@@ -1,0 +1,70 @@
+# `ci:pause` on a PR withholds every pipeline: no run, so no status, so the required
+# checks stay pending and the PR can't merge. That's the point - it parks a stacked PR that
+# can't pass until the branch below it merges. Un-pausing needs the label off *and* a push.
+# Every other pipeline carries the same line and points here.
+when:
+  - event: push
+    branch: main
+  - event: pull_request
+    evaluate: 'not ("ci:pause" in split(CI_COMMIT_PULL_REQUEST_LABELS, ","))'
+
+steps:
+  - name: fmt
+    image: rust:1.97.0-slim-trixie@sha256:686a437ead83701e8f871e66e838c3ec55f46b5fc235b025756396ac823bdc51
+    # Path filtering lives on each step, never the top-level `when`, so the pipeline always
+    # reports a status (see the woodpecker skill).
+    when: &lint-when
+      - event: push
+        branch: main
+        path:
+          include: &lint-paths ['src/**', 'Cargo.toml', 'Cargo.lock', '.rustfmt.toml', '.woodpecker/lint.yaml']
+      - event: pull_request
+        path:
+          include: *lint-paths
+    environment:
+      CARGO_TERM_COLOR: always
+    commands:
+      - rustup component add rustfmt
+      - cargo fmt --all -- --check
+
+  - name: clippy
+    image: rust:1.97.0-slim-trixie@sha256:686a437ead83701e8f871e66e838c3ec55f46b5fc235b025756396ac823bdc51
+    volumes: &lint-volumes
+      - /var/lib/woodpecker-cache/cargo-home:/cache/cargo-home
+      - /var/lib/woodpecker-cache/pacmagic-target-lint:/cache/target
+    # CARGO_HOME is the cache volume (whole, so cargo's package-cache lock is shared too).
+    # rustup refuses to run unless CARGO_HOME is its own install, hence the prefix on
+    # every rustup command below.
+    environment: &lint-env
+      CARGO_HOME: /cache/cargo-home
+      CARGO_TARGET_DIR: /cache/target
+      CARGO_TERM_COLOR: always
+    when: *lint-when
+    commands:
+      - CARGO_HOME=/usr/local/cargo rustup component add clippy
+      - cargo clippy --all-targets --all-features --locked -- -D warnings
+
+  # Code behind `#[cfg(target_os = "windows"/"macos")]` (winget, brew, platform detection)
+  # is invisible to a Linux clippy run. Checking needs only the target's std, no linker or
+  # SDK, because no dependency compiles C. Native tests on those OSes run post-merge in
+  # .github/workflows/cross-platform.yml.
+  - name: clippy-targets
+    image: rust:1.97.0-slim-trixie@sha256:686a437ead83701e8f871e66e838c3ec55f46b5fc235b025756396ac823bdc51
+    volumes: *lint-volumes
+    environment: *lint-env
+    when: *lint-when
+    commands:
+      - CARGO_HOME=/usr/local/cargo rustup component add clippy
+      - CARGO_HOME=/usr/local/cargo rustup target add x86_64-pc-windows-gnu aarch64-apple-darwin
+      - cargo clippy --target x86_64-pc-windows-gnu --all-targets --all-features --locked -- -D warnings
+      - cargo clippy --target aarch64-apple-darwin --all-targets --all-features --locked -- -D warnings
+
+  - name: doc
+    image: rust:1.97.0-slim-trixie@sha256:686a437ead83701e8f871e66e838c3ec55f46b5fc235b025756396ac823bdc51
+    volumes: *lint-volumes
+    environment:
+      <<: *lint-env
+      RUSTDOCFLAGS: -D warnings
+    when: *lint-when
+    commands:
+      - cargo doc --no-deps --all-features --locked

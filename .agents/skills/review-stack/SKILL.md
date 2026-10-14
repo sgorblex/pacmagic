@@ -102,7 +102,7 @@ Bottom-up, on each branch, run what its paths touch:
 
 | Changed | Run |
 | --- | --- |
-| anything in `src/` | `mise run fmt-check`, `mise run lint`, `mise run test`, `mise run doc-check` |
+| anything in `src/` | `mise run fmt-check`, `mise run lint`, `mise run lint-targets`, `mise run test`, `mise run doc-check` |
 | `Cargo.toml` / `Cargo.lock` | additionally `mise run deny`, `mise run machete`, `mise run msrv` |
 | an adapter's command building | a dry-run smoke test against the real package manager where it is installed: `mise run dev -- -n -p <pm> <command> …` prints the exact command |
 
@@ -110,7 +110,7 @@ Bottom-up, on each branch, run what its paths touch:
 
 - **Judge by exit status, not by grepping the output.** `mise.toml` sets `CARGO_TERM_COLOR=always`, so a `grep '^error'` over task output matches nothing and a failed build looks clean.
 - **Formatting failures stop a `&&` chain** before clippy or tests run — check every step actually ran.
-- CI also runs tests on **macOS and Windows**; `#[cfg(target_os)]` code and path handling you cannot run locally deserve a closer read instead.
+- `mise run lint-targets` compiles and lints the **macOS and Windows** `#[cfg(target_os)]` code, but nothing runs its tests before merge (`cross-platform.yml` runs them on `main`). Path handling and other runtime behaviour there deserve a closer read instead.
 
 Report a branch as verified only once its checks have **actually run**, and say plainly which ones did not.
 

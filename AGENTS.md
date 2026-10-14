@@ -15,15 +15,16 @@ mise install          # install pinned Rust toolchain
 mise run dev -- <args>  # e.g. mise run dev -- install --dry-run neovim
 mise run test          # cargo test --all-targets --all-features --locked
 mise run lint          # cargo clippy --all-targets --all-features --locked -- -D warnings
+mise run lint-targets  # the same clippy for the Windows and macOS targets (cfg-gated code)
 mise run fmt-check     # cargo fmt --all -- --check
 mise run format        # cargo fmt --all (writes files)
 mise run fix           # clippy --fix, then cargo fmt (writes files)
 mise run doc-check     # cargo doc --no-deps --all-features --locked (RUSTDOCFLAGS=-D warnings)
 mise run msrv          # cargo check on the MSRV toolchain (installed via rustup)
-mise run check-all     # bundled: fmt-check, lint, test, deny, doc-check, msrv, machete (alias: all)
+mise run check-all     # bundled: fmt-check, lint, lint-targets, test, deny, doc-check, msrv, machete (alias: all)
 ```
 
-`mise run check-all` mirrors CI and needs `cargo-deny` and `cargo-machete` on `PATH`. Without mise, use plain Cargo (see `CONTRIBUTING.md` for the equivalent `cargo` invocations). The MSRV is `rust-version` in `Cargo.toml` (bumped by hand); the local toolchain pin is `rust` in `mise.toml` (bumped by Renovate). Don't restate either number elsewhere.
+`mise run check-all` mirrors the Woodpecker gates and needs `cargo-deny` and `cargo-machete` on `PATH`. Without mise, use plain Cargo (see `CONTRIBUTING.md` for the equivalent `cargo` invocations). The MSRV is `rust-version` in `Cargo.toml` (bumped by hand); the local toolchain pin is `rust` in `mise.toml` (bumped by Renovate). Don't restate either number elsewhere.
 
 Run a single test:
 ```bash
@@ -83,7 +84,7 @@ TOML config loaded from `$XDG_CONFIG_HOME` (or `~/.config` on Linux, `~/Library/
 - **Never run remote-mutating commands — `git push`, `gt submit`, `gt push`, `gh pr create`, merging, or commenting on a PR — unless the user explicitly asks in the current request.** Local commits, stack edits, and read-only inspection need no asking.
 - **Worktrees**: `.claude/settings.json` runs background agents in their own worktree under `.claude/worktrees/` (gitignored). From the shared main checkout, ask before creating one for feature-sized work. A harness-generated `worktree-…` branch is untracked scratch that `gt` refuses to operate on: open the real branch with `git switch -c <type>/<short_name>` + `gt track --parent <parent>`, then delete the scratch branch with `git branch -d`; a `SessionEnd` hook sweeps any merged ones left behind. Hand a worktree back in place, committed and clean — do not `git worktree remove` it. Never use bare `git stash`: the stash stack is shared across worktrees.
 
-The [`start-work`](.agents/skills/start-work/SKILL.md) and [`review-stack`](.agents/skills/review-stack/SKILL.md) skills walk through opening a branch and the pre-PR review of a branch or stack.
+The [`start-work`](.agents/skills/start-work/SKILL.md) and [`review-stack`](.agents/skills/review-stack/SKILL.md) skills walk through opening a branch and the pre-PR review of a branch or stack; [`woodpecker`](.agents/skills/woodpecker/SKILL.md) covers editing a `.woodpecker/` pipeline.
 
 ## AI-agent skills
 
@@ -100,7 +101,7 @@ Update documentation in the **same change** when your edits touch the areas belo
 | A new package manager | `README.md` supported list; `ARCHITECTURE.md` adapter tree; `CONTRIBUTING.md` (Adding a Package Manager) if the steps changed |
 | A config option | `config.example.toml` and the `init-config` template in `Config::template` (`src/config/mod.rs`) |
 | Dev commands, `mise.toml` tasks, the toolchain | **Commands** above; `CONTRIBUTING.md` |
-| CI, release automation, Renovate | **Notes** below; `CONTRIBUTING.md` (Release Process) |
+| CI, release automation, Renovate | **Notes** below; `CONTRIBUTING.md` (Continuous Integration, Release Process); the `woodpecker` skill for pipeline conventions |
 | Plans or priorities | `ROADMAP.md` |
 | A convention agreed with the user in conversation | This file, `CONTRIBUTING.md`, or a skill — in the same change, not left in chat history |
 | Versions or `CHANGELOG.md` | **Nothing by hand** — release-please owns them |
@@ -109,8 +110,8 @@ Update documentation in the **same change** when your edits touch the areas belo
 
 - PacMagic abstracts package-manager **commands, not their output**: an adapter forwards the native command's output as-is (run via `execute_interactive`) instead of parsing and reformatting it, unless PacMagic itself consumes the result (e.g. `list_installed` for shell completion and `--install-behavior` checks).
 - Security-sensitive boundary: `core::validation` is what stands between user input and shelling out to a real package manager. Any new code path that passes user-supplied strings to adapters must go through it (see `PacMagic::execute` in `lib.rs`).
-- CI (`.github/workflows/ci.yml`) runs fmt, clippy (`-D warnings`), tests on Linux/macOS/Windows (stable + beta), `cargo-deny`, doc build (`-D warnings`), MSRV check, and `cargo-machete`, gated behind a final `ci-pass` job — match this locally with `mise run check-all` before pushing.
+- CI: **Woodpecker** (`.woodpecker/*.yaml`) runs every PR gate, mirrored locally by `mise run check-all` — run it before pushing. **GitHub Actions** keeps only what needs its runners or API: native macOS/Windows tests after merge (`cross-platform.yml`), releases, and PR assignment. Label a PR `ci:pause` to withhold its Woodpecker runs. Details: `CONTRIBUTING.md` — Continuous Integration.
 - Dependencies are updated by [Renovate](https://docs.renovatebot.com/) (`renovate.json`): routine bumps wait for approval on the Dependency Dashboard issue, then automerge (minor/patch cargo only); security fixes skip approval and use `fix(deps):` so release-please cuts a release for them. `.github/workflows/assignee.yml` assigns Renovate's PRs to the repo owner.
 - Rust edition is 2021 for the crate (`Cargo.toml`) but `.rustfmt.toml` is pinned to `edition = "2024"` formatting rules — this is intentional, not a mismatch to fix.
 - **Commit messages matter beyond style**: releases are fully automated by [release-please](https://github.com/googleapis/release-please) (`.github/workflows/release-please.yml`, config in `release-please-config.json`/`.release-please-manifest.json`), driven by Conventional Commit types on `main` (`feat`/`fix`/breaking-change footers bump the version and populate `CHANGELOG.md`; see `CONTRIBUTING.md`). Get the commit type right.
-- release-please's PRs and tags are authored with the default `GITHUB_TOKEN`, so per GitHub's recursive-workflow-trigger prevention, `ci.yml` does **not** run on release-please's own release PRs, and pushing its tag doesn't independently trigger a workflow — the binary-build/publish jobs in `release-please.yml` are chained via `needs:`/job outputs in the *same* workflow run instead. This is intentional, not a gap to fix by adding a PAT.
+- release-please's PRs and tags are authored with the default `GITHUB_TOKEN`, so per GitHub's recursive-workflow-trigger prevention no GitHub Actions workflow runs on its release PRs, and pushing its tag doesn't independently trigger a workflow — the binary-build/publish jobs in `release-please.yml` are chained via `needs:`/job outputs in the *same* workflow run instead. This is intentional, not a gap to fix by adding a PAT. Woodpecker is not subject to that rule, so the PR gates do run on release PRs; don't exclude `release-please--*` branches from them.
