@@ -11,9 +11,20 @@ case "$(uname -m)" in
   *) echo "unsupported architecture: $(uname -m)" >&2; exit 1 ;;
 esac
 
+# download <url> <file>: retried, since one dropped connection would fail a required check.
+download() {
+  for attempt in 1 2 3; do
+    wget -q -T 30 -O "$2" "$1" && return 0
+    echo "download of $1 failed (attempt $attempt of 3)" >&2
+    [ "$attempt" -eq 3 ] || sleep 5
+  done
+  return 1
+}
+
 # fetch <base-url> <archive-stem>: download, verify, and unpack <archive-stem>/<tool>.
 fetch() {
-  wget -q "$1/$2.tar.gz" "$1/$2.tar.gz.sha256"
+  download "$1/$2.tar.gz" "$2.tar.gz"
+  download "$1/$2.tar.gz.sha256" "$2.tar.gz.sha256"
   echo "$(cat "$2.tar.gz.sha256")  $2.tar.gz" | sha256sum -c -
   tar -xzf "$2.tar.gz"
 }
