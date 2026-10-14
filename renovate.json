@@ -36,7 +36,7 @@
       "pinDigests": true,
       "groupName": "GitHub Actions",
       "automerge": false,
-      "description": "Nothing on a PR exercises these workflows: release-please.yml and cross-platform.yml run only on main, and assignee.yml only when a PR opens."
+      "description": "Only pr-title.yml runs on a PR (and it is advisory); release-please.yml and cross-platform.yml run only on main, and assignee.yml only when a PR opens."
     },
     {
       "matchManagers": ["woodpecker"],

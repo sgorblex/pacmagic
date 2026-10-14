@@ -276,7 +276,10 @@ type(scope): description
 - `style`: Formatting
 - `refactor`: Code restructuring
 - `test`: Adding tests
+- `perf`, `build`, `ci`, `revert`: as in [Conventional Commits](https://www.conventionalcommits.org/)
 - `chore`: Maintenance
+
+The **PR title** has to follow the same format: PRs are squash-merged, so the title becomes the commit on `main`. `.github/workflows/pr-title.yml` checks it and re-runs whenever the title is edited. The check is advisory, not required: release-please opens its PRs with `GITHUB_TOKEN`, so no GitHub workflow ever reports on them, and a required check would block every release PR.
 
 **Examples:**
 ```
@@ -288,7 +291,7 @@ Fixes #123
 docs: update CONTRIBUTING with new examples
 ```
 
-These aren't just style — commit types on `main` directly drive [release-please](https://github.com/googleapis/release-please)'s version bumps and `CHANGELOG.md` entries (see Release Process below). `feat:` bumps the minor version and appears under "Features"; `fix:` bumps patch and appears under "Bug Fixes"; a `!` after the type or a `BREAKING CHANGE:` footer bumps the major version (or minor, while pre-1.0). Other types (`chore`, `docs`, `style`, `refactor`, `test`, `build`, `ci`) don't bump the version and are omitted from the changelog unless they contain a breaking-change marker.
+These aren't just style — commit types on `main` directly drive [release-please](https://github.com/googleapis/release-please)'s version bumps and `CHANGELOG.md` entries (see Release Process below). `feat:` bumps the minor version and appears under "Features"; `fix:` bumps patch and appears under "Bug Fixes"; `perf:` and `revert:` also bump patch, under "Performance Improvements" and "Reverts"; a `!` after the type or a `BREAKING CHANGE:` footer bumps the major version (or minor, while pre-1.0). Other types (`chore`, `docs`, `style`, `refactor`, `test`, `build`, `ci`) don't bump the version and are omitted from the changelog unless they contain a breaking-change marker.
 
 ### Pull Request Process
 
@@ -417,7 +420,7 @@ The PR gates run on **Woodpecker CI** (`.woodpecker/*.yaml`) in digest-pinned Li
 - **Path filters live on the steps.** A PR touching none of a pipeline's paths (docs only, say) still gets a passing status, with its steps skipped. A top-level filter would post no status at all, and a required check that never reports blocks the merge forever. See the [`woodpecker`](.agents/skills/woodpecker/SKILL.md) skill before editing a pipeline.
 - **`ci:pause`**: label a PR with it and Woodpecker stops running on it. The required checks stay pending, so a stacked branch that can't pass until the branch below it merges can't be merged early either. To resume, remove the label **and** push. Label edits alone don't trigger a run, and a PR that was already green stays mergeable until its next push.
 - **Renaming a pipeline file renames its check.** Open the PR, let the new check report once, swap it into the ruleset's required checks, and only then merge. The other order blocks the very PR that fixes the name.
-- **GitHub Actions** keeps only what Woodpecker can't do: `cross-platform.yml` runs the tests natively on macOS and Windows after each merge to `main` that touches the code (or on manual dispatch). It is not a PR gate, because those runners are billed per minute. `release-please.yml` releases, and `assignee.yml` assigns each PR to its author (Renovate's to the repository owner).
+- **GitHub Actions** keeps only what Woodpecker can't do. `pr-title.yml` checks the PR title (title edits never reach Woodpecker). `cross-platform.yml` runs the tests natively on macOS and Windows after each merge to `main` that touches the code (or on manual dispatch); it is not a PR gate, because those runners are billed per minute. `release-please.yml` releases, and `assignee.yml` assigns each PR to its author (Renovate's to the repository owner).
 - **No beta-toolchain or release-profile build in CI.** A new toolchain is tested when Renovate's grouped Rust bump arrives, and the release profile (`lto`, one codegen unit) first builds in `release-please.yml`.
 - The Rust image and the `cargo-deny`/`cargo-machete` versions in `.woodpecker/` are pinned separately from `mise.toml`. Renovate groups each copy with its `mise.toml` counterpart, so they move together.
 
@@ -427,7 +430,7 @@ The PR gates run on **Woodpecker CI** (`.woodpecker/*.yaml`) in digest-pinned Li
 
 Releases are automated by [release-please](https://github.com/googleapis/release-please) (`.github/workflows/release-please.yml`), driven entirely by Conventional Commits merged to `main` — there's no manual version bumping or tagging:
 
-1. Every push to `main` with releasable commits (`feat`, `fix`, or a breaking change) since the last release makes release-please open or update a "release PR" that bumps `Cargo.toml`'s `version`, updates `Cargo.lock`, and rewrites `CHANGELOG.md`.
+1. Every push to `main` with releasable commits (`feat`, `fix`, `perf`, `revert`, or a breaking change) since the last release makes release-please open or update a "release PR" that bumps `Cargo.toml`'s `version`, updates `Cargo.lock`, and rewrites `CHANGELOG.md`.
 2. Review and merge that PR when you're ready to cut a release.
 3. On merge, release-please creates the git tag and GitHub Release (with the changelog as the release body); the same workflow then builds release binaries for Linux/macOS/Windows and attaches them to that release.
 4. Config lives in `release-please-config.json` / `.release-please-manifest.json` at the repo root.
