@@ -218,4 +218,4 @@ An honest snapshot of the architecture as built today, kept here as the baseline
 
 1. **Unit Tests**: Each module's `#[cfg(test)] mod tests` block tests its logic in isolation, including adapters (command construction, output parsing) and validation (injection-prevention edge cases).
 2. **Mock Package Managers**: `mockall` is available as a dev-dependency, and `AdapterRegistry::register()`/the `PackageManager` trait make it straightforward to substitute a fake adapter in tests (see `test_registry_register` in `src/adapters/mod.rs` for the pattern).
-3. **Platform Tests**: CI (`.github/workflows/ci.yml`) runs the test suite on Linux, macOS, and Windows.
+3. **Platform Tests**: every PR runs the test suite on Linux and lints the macOS/Windows `cfg`-gated code with cross-target clippy (`.woodpecker/`); the suite runs natively on macOS and Windows after each merge to `main` (`.github/workflows/cross-platform.yml`).

@@ -1,0 +1,55 @@
+# `ci:pause` pauses this pipeline too - see lint.yaml.
+when:
+  - event: push
+    branch: main
+  - event: pull_request
+    evaluate: 'not ("ci:pause" in split(CI_COMMIT_PULL_REQUEST_LABELS, ","))'
+
+steps:
+  - name: fetch-tools
+    image: alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
+    environment:
+      # Same versions as mise.toml's [tools]; Renovate bumps both (see renovate.json).
+      # renovate: datasource=github-releases depName=EmbarkStudios/cargo-deny
+      CARGO_DENY_VERSION: "0.20.2"
+      # renovate: datasource=github-releases depName=bnjbvr/cargo-machete
+      CARGO_MACHETE_VERSION: "0.9.2"
+    # Path filtering here, not top-level - see lint.yaml for why. src/** is in the list
+    # because cargo-machete reads the sources to find which dependencies are used.
+    when: &deps-when
+      - event: push
+        branch: main
+        path:
+          include: &deps-paths
+            - 'src/**'
+            - 'Cargo.toml'
+            - 'Cargo.lock'
+            - 'deny.toml'
+            - 'scripts/ci-fetch-tools.sh'
+            - '.woodpecker/deps.yaml'
+      - event: pull_request
+        path:
+          include: *deps-paths
+    commands:
+      - scripts/ci-fetch-tools.sh
+
+  - name: deny
+    image: rust:1.97.0-slim-trixie@sha256:686a437ead83701e8f871e66e838c3ec55f46b5fc235b025756396ac823bdc51
+    volumes:
+      - /var/lib/woodpecker-cache/cargo-home:/cache/cargo-home
+    environment:
+      CARGO_HOME: /cache/cargo-home
+      CARGO_TERM_COLOR: always
+      DEBIAN_FRONTEND: noninteractive
+    when: *deps-when
+    commands:
+      # cargo-deny clones the RustSec advisory database with the git CLI, which the slim
+      # image lacks.
+      - apt-get update -qq && apt-get install -qq -y --no-install-recommends git >/dev/null
+      - .ci-bin/cargo-deny check advisories licenses sources bans
+
+  - name: machete
+    image: rust:1.97.0-slim-trixie@sha256:686a437ead83701e8f871e66e838c3ec55f46b5fc235b025756396ac823bdc51
+    when: *deps-when
+    commands:
+      - .ci-bin/cargo-machete

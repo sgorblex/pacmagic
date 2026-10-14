@@ -15,7 +15,7 @@ Thank you for your interest in contributing to PacMagic! This document covers ev
 - Rust **1.85** or later (**MSRV**, see `rust-version` in `Cargo.toml`).
 - A supported package manager (apt, pacman, paru, brew, winget) if you want to exercise real (non-dry-run) operations.
 
-Optional but recommended: [mise](https://mise.jdx.dev/) reads `mise.toml` and installs the repo-pinned Rust version, plus `cargo-deny` and `cargo-machete` (needed for `mise run check-all`):
+Optional but recommended: [mise](https://mise.jdx.dev/) reads `mise.toml` and installs the repo-pinned Rust version (with the Windows and macOS std targets used by `mise run lint-targets`), plus `cargo-deny` and `cargo-machete` (needed for `mise run check-all`):
 
 ```bash
 mise install
@@ -188,6 +188,10 @@ cargo fmt --all -- --check
 # Linter
 cargo clippy --all-targets --all-features --locked -- -D warnings
 
+# Same linter for the cfg-gated Windows/macOS code (once: rustup target add x86_64-pc-windows-gnu aarch64-apple-darwin)
+cargo clippy --target x86_64-pc-windows-gnu --all-targets --all-features --locked -- -D warnings
+cargo clippy --target aarch64-apple-darwin --all-targets --all-features --locked -- -D warnings
+
 # Fix common clippy issues
 cargo clippy --all-targets --all-features --locked --fix
 ```
@@ -294,7 +298,7 @@ These aren't just style — commit types on `main` directly drive [release-pleas
    git checkout -b feat/my_feature   # <type>/<short_name>, snake_case
    ```
 3. **Make** your changes
-4. **Test** thoroughly (or `mise install` then `mise run check-all` if you use mise — see `mise.toml`):
+4. **Test** thoroughly (or `mise install` then `mise run check-all`, which mirrors every CI gate — see `mise.toml`):
    ```bash
    cargo test --all-targets --all-features --locked
    cargo clippy --all-targets --all-features --locked -- -D warnings
@@ -396,6 +400,26 @@ When implementing support for these, consider:
 - Profile before optimizing
 
 This area is a near-term focus — see `ROADMAP.md` for the planned design/performance refactor.
+
+## Continuous Integration
+
+The PR gates run on **Woodpecker CI** (`.woodpecker/*.yaml`) in digest-pinned Linux containers. Each file is its own pipeline and reports its own GitHub check, `ci/woodpecker/pr/<file>`, and all four are required:
+
+| Pipeline | Runs | Locally |
+| --- | --- | --- |
+| `lint` | `cargo fmt --check`; clippy `-D warnings` for the host and for `x86_64-pc-windows-gnu` / `aarch64-apple-darwin` (checking only, so no cross linker is needed); `cargo doc` with `-D warnings` | `mise run` `fmt-check`, `lint`, `lint-targets`, `doc-check` |
+| `test` | `cargo test` | `mise run test` |
+| `msrv` | `cargo check` on the `rust-version` from `Cargo.toml` | `mise run msrv` |
+| `deps` | `cargo-deny`, `cargo-machete` | `mise run` `deny`, `machete` |
+
+`mise run check-all` runs all of them. Some things to know:
+
+- **Path filters live on the steps.** A PR touching none of a pipeline's paths (docs only, say) still gets a passing status, with its steps skipped. A top-level filter would post no status at all, and a required check that never reports blocks the merge forever. See the [`woodpecker`](.agents/skills/woodpecker/SKILL.md) skill before editing a pipeline.
+- **`ci:pause`**: label a PR with it and Woodpecker stops running on it. The required checks stay pending, so a stacked branch that can't pass until the branch below it merges can't be merged early either. To resume, remove the label **and** push. Label edits alone don't trigger a run, and a PR that was already green stays mergeable until its next push.
+- **Renaming a pipeline file renames its check.** Open the PR, let the new check report once, swap it into the ruleset's required checks, and only then merge. The other order blocks the very PR that fixes the name.
+- **GitHub Actions** keeps only what Woodpecker can't do: `cross-platform.yml` runs the tests natively on macOS and Windows after each merge to `main` that touches the code (or on manual dispatch). It is not a PR gate, because those runners are billed per minute. `release-please.yml` releases, and `assignee.yml` assigns each PR to its author (Renovate's to the repository owner).
+- **No beta-toolchain or release-profile build in CI.** A new toolchain is tested when Renovate's grouped Rust bump arrives, and the release profile (`lto`, one codegen unit) first builds in `release-please.yml`.
+- The Rust image and the `cargo-deny`/`cargo-machete` versions in `.woodpecker/` are pinned separately from `mise.toml`. Renovate groups each copy with its `mise.toml` counterpart, so they move together.
 
 ## Release Process
 

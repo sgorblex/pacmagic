@@ -15,6 +15,17 @@
   "lockFileMaintenance": {
     "enabled": true
   },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Tool versions downloaded by .woodpecker/deps.yaml (scripts/ci-fetch-tools.sh), annotated with a renovate comment on the line above.",
+      "managerFilePatterns": ["/^\\.woodpecker/.+\\.ya?ml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s+\\w+:\\s*\"(?<currentValue>[^\"]+)\""
+      ],
+      "extractVersionTemplate": "^v?(?<version>.+)$"
+    }
+  ],
   "packageRules": [
     {
       "matchUpdateTypes": ["major"],
@@ -25,20 +36,29 @@
       "pinDigests": true,
       "groupName": "GitHub Actions",
       "automerge": false,
-      "description": "Nothing on a PR exercises most workflow changes (release-please.yml runs only on main)."
+      "description": "Nothing on a PR exercises these workflows: release-please.yml and cross-platform.yml run only on main, and assignee.yml only when a PR opens."
+    },
+    {
+      "matchManagers": ["woodpecker"],
+      "pinDigests": true,
+      "description": "A bumped step image runs on its own PR, so these may automerge like cargo updates."
     },
     {
       "matchManagers": ["mise"],
       "groupName": "mise tool versions",
       "automerge": false,
       "lockFileMaintenance": { "enabled": false },
-      "description": "mise is dev-only (CI installs its own toolchains), so CI passing proves nothing about these. No mise.lock, so nothing for lock file maintenance to refresh."
+      "description": "Most mise tools are dev-only and CI never calls mise; the rust, cargo-deny and cargo-machete pins are regrouped below with their .woodpecker/ copies. No mise.lock, so nothing for lock file maintenance to refresh."
     },
     {
-      "matchManagers": ["mise"],
       "matchDepNames": ["rust"],
       "groupName": "Rust toolchain (expect new clippy diagnostics)",
-      "description": "clippy runs with -D warnings; a new toolchain can fail a green branch. Fix the new lints in the same PR."
+      "description": "The mise.toml pin and the .woodpecker/ rust image move together. clippy runs with -D warnings; a new toolchain can fail a green branch. Fix the new lints in the same PR."
+    },
+    {
+      "matchPackageNames": ["EmbarkStudios/cargo-deny", "bnjbvr/cargo-machete"],
+      "groupName": "cargo-deny and cargo-machete",
+      "description": "The mise.toml pins and the versions .woodpecker/deps.yaml downloads move together."
     },
     {
       "matchManagers": ["cargo"],

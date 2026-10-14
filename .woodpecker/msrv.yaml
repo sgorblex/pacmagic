@@ -1,0 +1,35 @@
+# `ci:pause` pauses this pipeline too - see lint.yaml.
+when:
+  - event: push
+    branch: main
+  - event: pull_request
+    evaluate: 'not ("ci:pause" in split(CI_COMMIT_PULL_REQUEST_LABELS, ","))'
+
+steps:
+  - name: msrv
+    image: rust:1.97.0-slim-trixie@sha256:686a437ead83701e8f871e66e838c3ec55f46b5fc235b025756396ac823bdc51
+    volumes:
+      - /var/lib/woodpecker-cache/cargo-home:/cache/cargo-home
+      - /var/lib/woodpecker-cache/pacmagic-target-msrv:/cache/target
+    environment:
+      CARGO_HOME: /cache/cargo-home
+      CARGO_TARGET_DIR: /cache/target
+      CARGO_TERM_COLOR: always
+    # Path filtering here, not top-level - see lint.yaml for why.
+    when:
+      - event: push
+        branch: main
+        path:
+          include: &msrv-paths ['src/**', 'Cargo.toml', 'Cargo.lock', '.woodpecker/msrv.yaml']
+      - event: pull_request
+        path:
+          include: *msrv-paths
+    # The MSRV is `rust-version` in Cargo.toml and nowhere else, so the toolchain is
+    # installed from it at run time rather than pinned as an image tag. It goes through a
+    # file, not a shell variable: Woodpecker rewrites `$NAME` in commands before the shell runs.
+    # CARGO_HOME prefix on rustup: see lint.yaml. The toolchain reaches cargo through
+    # RUSTUP_TOOLCHAIN, because `cargo +<toolchain>` hits the same rustup check.
+    commands:
+      - sed -n 's/^rust-version *= *"\(.*\)"/\1/p' Cargo.toml | head -1 > /tmp/msrv && test -s /tmp/msrv
+      - CARGO_HOME=/usr/local/cargo rustup toolchain install "$(cat /tmp/msrv)" --profile minimal
+      - RUSTUP_TOOLCHAIN="$(cat /tmp/msrv)" cargo check --all-targets --all-features --locked

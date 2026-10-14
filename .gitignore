@@ -1,5 +1,6 @@
 # Rust
 /target/
+/.ci-bin/
 **/*.rs.bk
 *.pdb
 
