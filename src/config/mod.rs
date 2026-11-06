@@ -6,12 +6,15 @@ use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
+    #[serde(default)]
     pub general: GeneralConfig,
     #[serde(
+        default,
         serialize_with = "serialize_aliases",
         deserialize_with = "deserialize_aliases"
     )]
     pub aliases: HashMap<String, AliasValue>,
+    #[serde(default)]
     pub package_managers: HashMap<String, PackageManagerConfig>,
 }
 
@@ -695,6 +698,24 @@ mod tests {
         let path = PathBuf::from("/nonexistent/path/config.toml");
         let config = Config::load_from(&path);
         assert!(config.is_err());
+    }
+
+    #[test]
+    fn test_config_load_from_allows_missing_sections() {
+        use tempfile::TempDir;
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("config.toml");
+
+        for contents in [
+            "",
+            "[general]\nno_confirm = true\n",
+            "[aliases]\n",
+            "[package_managers]\n",
+        ] {
+            fs::write(&config_path, contents).unwrap();
+            let config = Config::load_from(&config_path).unwrap();
+            assert!(config.aliases.contains_key("install"), "{contents:?}");
+        }
     }
 
     #[test]
