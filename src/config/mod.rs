@@ -92,9 +92,9 @@ pub struct GeneralConfig {
     #[serde(default = "default_package_manager")]
     pub default_package_manager: String,
 
-    /// Confirm before installing packages
-    #[serde(default = "default_true")]
-    pub confirm_before_install: bool,
+    /// Skip confirmation prompts by default
+    #[serde(default)]
+    pub no_confirm: bool,
 
     /// Enable verbose output by default
     #[serde(default)]
@@ -155,7 +155,7 @@ impl Default for GeneralConfig {
     fn default() -> Self {
         Self {
             default_package_manager: default_package_manager(),
-            confirm_before_install: true,
+            no_confirm: false,
             verbose: false,
             use_sudo: true,
             install_behavior: default_install_behavior(),
@@ -288,8 +288,9 @@ impl Config {
             "# default_package_manager = \"{}\"\n\n",
             default_package_manager()
         ));
-        out.push_str("# Ask for confirmation before installing packages\n");
-        out.push_str("# confirm_before_install = true\n\n");
+        out.push_str("# Skip confirmation prompts, like -y (--confirm overrides it for one run)\n");
+        out.push_str("# On paru this also skips AUR review prompts\n");
+        out.push_str("# no_confirm = false\n\n");
         out.push_str("# Print extra output while running commands\n");
         out.push_str("# verbose = false\n\n");
         out.push_str("# Run privileged package manager commands with sudo\n");
@@ -408,7 +409,7 @@ mod tests {
     fn test_default_config() {
         let config = Config::default();
         assert_eq!(config.general.default_package_manager, "auto");
-        assert!(config.general.confirm_before_install);
+        assert!(!config.general.no_confirm);
         assert!(!config.aliases.is_empty());
     }
 
@@ -507,7 +508,7 @@ mod tests {
     fn test_general_config_default() {
         let config = GeneralConfig::default();
         assert_eq!(config.default_package_manager, "auto");
-        assert!(config.confirm_before_install);
+        assert!(!config.no_confirm);
         assert!(!config.verbose);
         assert!(config.use_sudo);
         assert_eq!(config.install_behavior, InstallBehavior::Default);
@@ -610,14 +611,14 @@ mod tests {
         let mut config = Config::default();
         config.general.default_package_manager = "pacman".to_string();
         config.general.verbose = true;
-        config.general.confirm_before_install = false;
+        config.general.no_confirm = true;
 
         let toml = toml::to_string(&config).unwrap();
         let parsed: Config = toml::from_str(&toml).unwrap();
 
         assert_eq!(parsed.general.default_package_manager, "pacman");
         assert!(parsed.general.verbose);
-        assert!(!parsed.general.confirm_before_install);
+        assert!(parsed.general.no_confirm);
     }
 
     #[test]
@@ -738,10 +739,7 @@ mod tests {
             parsed.general.default_package_manager,
             defaults.general.default_package_manager
         );
-        assert_eq!(
-            parsed.general.confirm_before_install,
-            defaults.general.confirm_before_install
-        );
+        assert_eq!(parsed.general.no_confirm, defaults.general.no_confirm);
         assert!(parsed.aliases.is_empty());
         assert_eq!(parsed.package_managers.len(), 2);
         assert!(parsed.get_package_manager_config("apt").enabled);
@@ -774,6 +772,7 @@ mod tests {
             "# default_package_manager = \"{}\"",
             defaults.general.default_package_manager
         )));
+        assert!(template.contains(&format!("# no_confirm = {}", defaults.general.no_confirm)));
         assert!(template.contains(&format!(
             "# install_behavior = \"{}\"",
             defaults.general.install_behavior

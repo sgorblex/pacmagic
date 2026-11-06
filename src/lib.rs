@@ -193,7 +193,7 @@ impl PacMagic {
     /// Prompt the user about upgrading packages
     fn prompt_upgrade(&self, upgrade_count: usize, options: &OperationOptions) -> Result<bool> {
         if options.no_confirm {
-            return Ok(false);
+            return Ok(true);
         }
 
         if options.dry_run {
@@ -326,6 +326,13 @@ mod tests {
         let config = Config::default();
         let pm = PacMagic::with_config(config);
         assert_eq!(pm.config().general.default_package_manager, "auto");
+    }
+
+    #[test]
+    fn test_prompt_upgrade_accepts_under_no_confirm() {
+        let pm = PacMagic::with_config(Config::default());
+        let options = OperationOptions::new().with_no_confirm(true);
+        assert!(pm.prompt_upgrade(3, &options).unwrap());
     }
 
     #[test]

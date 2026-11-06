@@ -5,8 +5,9 @@
 # Default package manager ("auto" for auto-detection)
 default_package_manager = "auto"
 
-# Confirm before installing packages
-confirm_before_install = true
+# Skip confirmation prompts, like -y (--confirm overrides it for one run)
+# On paru this also skips AUR review prompts, so PKGBUILDs get built unreviewed
+no_confirm = false
 
 # Enable verbose output by default
 verbose = false
@@ -88,5 +89,3 @@ extra_flags = []
 enabled = true
 use_sudo = false
 extra_flags = []
-
-
