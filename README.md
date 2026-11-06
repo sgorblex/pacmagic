@@ -85,6 +85,9 @@ pacmagic info nginx
 pacmagic install --user paru-bin
 pacmagic search --official python
 pacmagic list --user
+
+# Skip confirmation prompts (-y, --yes, or --noconfirm)
+pacmagic upgrade --noconfirm
 ```
 
 `--official`/`--user` apply to `install`, `upgrade`, `search`, `list` and `info`, and are ignored by other commands. Support depends on the package manager: paru supports both everywhere; pacman supports `--official` everywhere and `--user` only for `list` (foreign packages). apt, brew and winget don't support them yet.
@@ -98,6 +101,8 @@ pacmagic init-config
 ```
 
 Edit `~/.config/pacmagic/config.toml` (Linux) or `~/Library/Application Support/pacmagic/config.toml` (macOS) to customize behavior.
+
+Set `no_confirm = true` under `[general]` to skip confirmation prompts by default; `--confirm` keeps them for a single run. On paru this also skips AUR review prompts, so PKGBUILDs get built unreviewed. Auto-confirming also answers yes to the `update-and-ask` upgrade prompt.
 
 ### Shell Completions
 

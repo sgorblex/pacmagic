@@ -89,8 +89,8 @@ impl CompletionContext {
             }
 
             match arg {
-                "-v" | "--verbose" | "-n" | "--dry-run" | "-y" | "--yes" | "-q" | "--quiet"
-                | "--official" | "--user" => {
+                "-v" | "--verbose" | "-n" | "--dry-run" | "-y" | "--yes" | "--noconfirm"
+                | "--confirm" | "-q" | "--quiet" | "--official" | "--user" => {
                     i += 1;
                     continue;
                 }
@@ -376,6 +376,15 @@ mod tests {
         let line = "pacmagic -p apt install fo";
         let ctx = CompletionContext::from_line(line, line.len()).expect("context");
         assert_eq!(ctx.command(), Some("install"));
+    }
+
+    #[test]
+    fn command_skips_confirm_flags() {
+        for flag in ["--noconfirm", "--confirm"] {
+            let line = format!("pacmagic {flag} install ne");
+            let ctx = CompletionContext::from_line(&line, line.len()).expect("context");
+            assert_eq!(ctx.command(), Some("install"));
+        }
     }
 
     #[test]

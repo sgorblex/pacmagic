@@ -91,7 +91,7 @@ User preferences live in TOML, loaded by `src/config/mod.rs`:
 ```toml
 [general]
 default_package_manager = "auto"  # or specific: "apt", "pacman", etc.
-confirm_before_install = true
+no_confirm = false
 install_behavior = "default"
 install_pre_update_behavior = "default"
 

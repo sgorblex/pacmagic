@@ -57,8 +57,12 @@ struct Cli {
     dry_run: bool,
 
     /// Skip confirmation prompts
-    #[arg(short = 'y', long, global = true)]
+    #[arg(short = 'y', long, visible_alias = "noconfirm", global = true)]
     yes: bool,
+
+    /// Keep confirmation prompts, overriding `--yes` and `no_confirm` in the config
+    #[arg(long, global = true)]
+    confirm: bool,
 
     /// Hide the command being executed (commands are shown by default)
     #[arg(short = 'q', long = "quiet", global = true)]
@@ -82,6 +86,10 @@ struct Cli {
 }
 
 impl Cli {
+    fn no_confirm(&self, config: &Config) -> bool {
+        !self.confirm && (self.yes || config.general.no_confirm)
+    }
+
     fn package_source(&self) -> PackageSource {
         if self.official {
             PackageSource::Official
@@ -310,7 +318,7 @@ fn run_multi_command(cli: Cli, operations: Vec<Operation>) -> pacmagic::Result<(
     let mut options = OperationOptions::new()
         .with_verbose(cli.verbose)
         .with_dry_run(cli.dry_run)
-        .with_no_confirm(cli.yes)
+        .with_no_confirm(cli.no_confirm(pm.config()))
         .with_show_commands(!cli.quiet)
         .with_source(cli.package_source())
         .append_extra_flags(&extra_flags);
@@ -338,6 +346,8 @@ fn extract_unknown_args(args: &[String], _error: &clap::Error) -> Vec<String> {
         "--dry-run",
         "-y",
         "--yes",
+        "--noconfirm",
+        "--confirm",
         "-q",
         "--quiet",
         "--install-behavior",
@@ -462,7 +472,7 @@ fn run(cli: Cli, default_command_used: bool) -> pacmagic::Result<()> {
     let mut options = OperationOptions::new()
         .with_verbose(cli.verbose)
         .with_dry_run(cli.dry_run)
-        .with_no_confirm(cli.yes)
+        .with_no_confirm(cli.no_confirm(pm.config()))
         .with_show_commands(!cli.quiet)
         .with_source(cli.package_source())
         .append_extra_flags(&extra_flags);
@@ -589,4 +599,35 @@ fn run(cli: Cli, default_command_used: bool) -> pacmagic::Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn no_confirm(args: &[&str], config_value: bool) -> bool {
+        let mut config = Config::default();
+        config.general.no_confirm = config_value;
+        let argv = ["pacmagic"].iter().chain(args).chain(&["list"]);
+        Cli::try_parse_from(argv).unwrap().no_confirm(&config)
+    }
+
+    #[test]
+    fn test_no_confirm_flags_and_config() {
+        assert!(!no_confirm(&[], false));
+        assert!(no_confirm(&[], true));
+        assert!(no_confirm(&["-y"], false));
+        assert!(no_confirm(&["--yes"], false));
+        assert!(no_confirm(&["--noconfirm"], false));
+        assert!(!no_confirm(&["--confirm"], true));
+    }
+
+    #[test]
+    fn test_confirm_beats_yes_in_any_position() {
+        assert!(!no_confirm(&["--confirm", "--yes"], false));
+        assert!(!no_confirm(&["--yes", "--confirm"], false));
+
+        let cli = Cli::try_parse_from(["pacmagic", "--confirm", "list", "--yes"]).unwrap();
+        assert!(!cli.no_confirm(&Config::default()));
+    }
 }
