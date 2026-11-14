@@ -35,8 +35,6 @@ steps:
 
   - name: deny
     image: rust:1.97.0-slim-trixie@sha256:686a437ead83701e8f871e66e838c3ec55f46b5fc235b025756396ac823bdc51
-    volumes:
-      - /var/lib/woodpecker-cache/cargo-home:/cache/cargo-home
     environment:
       CARGO_HOME: /cache/cargo-home
       CARGO_TERM_COLOR: always
